@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LineUp Maker Demo</title>
+
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    crossorigin="anonymous"
+  />
+
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+  />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:ital,opsz,wght=0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="app">
+
+    <nav class="navbar navbar-expand-lg navbar-app">
+      <div class="container-fluid px-4">
+        <a href="#" class="navbar-brand brand-logo" href="#">
+          <i class="bi bi-file-earmark-pdf-fill"></i>
+          LineUp Maker [Demo]
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                :class="{ active: activeTab === 'library' }"
+                href="#"
+                @click.prevent="activeTab = 'library'"
+              >
+                <i class="bi bi-collection"></i> Library
+              </a>
+            </li>
+            <li class="nav-item" v-if="isAdminUser">
+              <a
+                class="nav-link"
+                :class="{ active: activeTab === 'upload' }"
+                href="#"
+                @click.prevent="activeTab = 'upload'"
+              >
+                <i class="bi bi-upload"></i> Upload
+              </a>
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link position-relative"
+                :class="{ active: activeTab === 'builder' }"
+                href="#"
+                @click.prevent="activeTab = 'builder'"
+              >
+                <i class="bi bi-layers"></i> Builder
+                <span
+                  v-if="selectedItems.length > 0"
+                  class="badge-count"
+                >{{ selectedItems.length }}</span>
+              </a>
+            </li>
+            <li class="nav-item" v-if="!user">
+              <button
+                class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#loginModal">
+                Login
+              </button>
+            </li>
+
+            <li class="nav-item" v-else>
+              <button
+                class="btn btn-danger"
+                @click="logout">
+                Logout
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid px-4 mt-3">
+      <div v-if="alert.message" :class="`alert alert-${alert.type} alert-dismissible fade show`" role="alert">
+        <i :class="`bi ${alert.type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle'} me-2`"></i>
+        {{ alert.message }}
+        <button type="button" class="btn-close" @click="alert.message = ''"></button>
+      </div>
+    </div>
+
+    <div v-show="activeTab === 'library'" class="container-fluid px-4 py-3">
+
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Song Library</h2>
+          <p class="section-sub">Search, browse, and select songs for your current lineup.</p>
+        </div>
+        <button class="btn btn-primary-app" @click="activeTab = 'upload'">
+          <i class="bi bi-plus-lg"></i> Add Song
+        </button>
+      </div>
+
+      <div class="search-bar-wrap">
+        <div class="input-group search-group">
+          <span class="input-group-text search-icon"><i class="bi bi-search"></i></span>
+          <input
+            type="text"
+            class="form-control search-input"
+            placeholder="Search by title, body, tags…"
+            v-model="searchQuery"
+            @input="debouncedSearch"
+          />
+          <input
+            type="text"
+            class="form-control category-input"
+            placeholder="Category filter"
+            v-model="categoryFilter"
+            @input="debouncedSearch"
+          />
+          <button class="btn btn-search-clear" @click="clearSearch">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <div v-if="loading" class="loading-wrap">
+        <div class="spinner-border text-primary" role="status"></div>
+        <span>Loading content…</span>
+      </div>
+
+      <div v-else-if="contentItems.length === 0" class="empty-state">
+        <i class="bi bi-inbox-fill"></i>
+        <p>No content found. <a href="#" @click.prevent="activeTab = 'upload'">Upload something!</a></p>
+      </div>
+
+      <div v-else class="row g-3 mt-1">
+        <div
+          v-for="item in contentItems"
+          :key="item._id"
+          class="col-12 col-sm-6 col-xl-4"
+        >
+          <div
+            class="content-card"
+            :class="{ 'content-card--selected': isSelected(item._id) }"
+            @click="toggleSelect(item)"
+          >
+            <div class="content-card__header">
+              <span class="content-card__category">{{ item.category }}</span>
+              <span v-if="isSelected(item._id)" class="content-card__check">
+                <i class="bi bi-check-circle-fill"></i>
+              </span>
+            </div>
+            <h5 class="content-card__title">{{ item.title }}</h5>
+            <p class="content-card__body">{{ truncate(item.body, 120) }}</p>
+            <div class="content-card__footer">
+              <span class="content-card__author">
+                <i class="bi bi-person-fill"></i> {{ item.author }}
+              </span>
+              <span class="content-card__date">{{ formatDate(item.createdAt) }}</span>
+            </div>
+            <div v-if="item.tags && item.tags.length" class="content-card__tags">
+              <span v-for="tag in item.tags" :key="tag" class="tag-pill">{{ tag }}</span>
+            </div>
+
+            <div class="content-card__actions" @click.stop>
+              <div class="btn-group" v-if="isAdminUser">
+                <button @click="openEditModal(item)" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-pencil-square"></i> Edit
+                </button>
+                 
+                <button @click="deleteItem(item._id)" class="btn btn-sm btn-outline-danger">
+                  <i class="bi bi-trash"></i> Delete
+                </button>
+              </div>
+            </div>
+             
+          </div>
+        </div>
+      </div>
+
+      <nav v-if="totalPages > 1" class="mt-4 d-flex justify-content-center">
+        <ul class="pagination pagination-app">
+          <li class="page-item" :class="{ disabled: currentPage === 1 }">
+            <a class="page-link" href="#" @click.prevent="goToPage(currentPage - 1)">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+          <li
+            v-for="p in totalPages"
+            :key="p"
+            class="page-item"
+            :class="{ active: p === currentPage }"
+          >
+            <a class="page-link" href="#" @click.prevent="goToPage(p)">{{ p }}</a>
+          </li>
+          <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+            <a class="page-link" href="#" @click.prevent="goToPage(currentPage + 1)">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <div v-if="selectedItems.length > 0" class="floating-bar">
+        <span><strong>{{ selectedItems.length }}</strong> item{{ selectedItems.length > 1 ? 's' : '' }} selected</span>
+        <button class="btn btn-primary-app btn-sm" @click="activeTab = 'builder'">
+          <i class="bi bi-layers-fill me-1"></i> Go to Builder
+        </button>
+        <button class="btn btn-outline-light btn-sm" @click="clearSelection">
+          <i class="bi bi-x"></i> Clear
+        </button>
+      </div>
+    </div>
+
+    <div v-show="activeTab === 'upload'" class="container px-4 py-3">
+
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Upload Song</h2>
+          <p class="section-sub">Add a new song to the database.</p>
+        </div>
+      </div>
+
+      <div class="upload-card">
+        <div class="mb-3">
+          <label class="form-label form-label-app">Title <span class="text-danger">*</span></label>
+          <input
+            type="text"
+            class="form-control form-control-app"
+            v-model="form.title"
+            placeholder="Enter song title"
+            maxlength="200"
+          />
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label form-label-app">Author</label>
+            <input
+              type="text"
+              class="form-control form-control-app"
+              v-model="form.author"
+              placeholder="Anonymous"
+            />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label form-label-app">Category</label>
+            <select class="form-select form-select-app" v-model="form.category" required>
+              <option value="" disabled selected>Select a category</option>
+              <option value="Mass">Mass</option>
+              <option value="Worship">Worship</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label form-label-app">Content Type</label>
+            <select class="form-select form-select-app" v-model="form.fileType" required>
+              <option value="" disabled selected>Select content type</option>
+              <option value="text">Plain Text</option>
+              <option value="markdown">Markdown</option>
+              <option value="html">HTML</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label form-label-app">Tags <small class="text-muted">(comma-separated)</small></label>
+          <input
+            type="text"
+            class="form-control form-control-app"
+            v-model="form.tags"
+            placeholder="e.g. entrance, offertory, worship, mass, lyrics, chords..."
+          />
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label form-label-app">Body <span class="text-danger">*</span></label>
+          <textarea
+            class="form-control form-control-app"
+            v-model="form.body"
+            rows="10"
+            placeholder="Paste lyrics here"
+          ></textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button
+            class="btn btn-primary-app px-4"
+            @click="uploadContent"
+            :disabled="uploading"
+          >
+            <span v-if="uploading">
+              <span class="spinner-border spinner-border-sm me-2"></span>Saving…
+            </span>
+            <span v-else>
+              <i class="bi bi-cloud-upload me-2"></i>Save to Database
+            </span>
+          </button>
+          <button class="btn btn-outline-secondary" @click="resetForm">
+            <i class="bi bi-arrow-counterclockwise"></i> Reset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-show="activeTab === 'builder'" class="container-fluid px-4 py-3">
+
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">LineUp Maker</h2>
+          <p class="section-sub">Arrange selected songs and generate your PDF.</p>
+        </div>
+      </div>
+
+      <div v-if="selectedItems.length === 0" class="empty-state">
+        <i class="bi bi-layers"></i>
+        <p>No items added yet. <a href="#" @click.prevent="activeTab = 'library'">Select from Library.</a></p>
+      </div>
+
+      <div class="row g-4" v-else>
+
+        <div class="col-lg-7">
+          <div class="builder-panel">
+            <div class="builder-panel__head">
+              <h5><i class="bi bi-sort-numeric-down me-2"></i>Arrange Sections</h5>
+              <span class="badge-count-inline">{{ selectedItems.length }} items</span>
+            </div>
+            <p class="builder-panel__hint">Drag rows or use arrows to reorder sections.</p>
+
+            <div class="builder-list">
+              <div
+                v-for="(item, idx) in selectedItems"
+                :key="item._id"
+                class="builder-row"
+                draggable="true"
+                @dragstart="dragStart(idx)"
+                @dragover.prevent="dragOver(idx)"
+                @dragend="dragEnd"
+                :class="{ 'builder-row--drag': dragIndex === idx }"
+              >
+                <div class="builder-row__drag-handle">
+                  <i class="bi bi-grip-vertical"></i>
+                </div>
+                <div class="builder-row__num">{{ idx + 1 }}</div>
+                <div class="builder-row__info">
+                  <div class="builder-row__title">{{ item.title }}</div>
+                  <div class="builder-row__meta">{{ item.category }} · {{ item.author }}</div>
+                </div>
+                <div class="builder-row__actions">
+                  <button
+                    class="btn btn-icon"
+                    :disabled="idx === 0"
+                    @click="moveItem(idx, idx - 1)"
+                    title="Move up"
+                  >
+                    <i class="bi bi-arrow-up"></i>
+                  </button>
+                  <button
+                    class="btn btn-icon"
+                    :disabled="idx === selectedItems.length - 1"
+                    @click="moveItem(idx, idx + 1)"
+                    title="Move down"
+                  >
+                    <i class="bi bi-arrow-down"></i>
+                  </button>
+                  <button
+                    class="btn btn-icon btn-icon--danger"
+                    @click="removeFromBuilder(idx)"
+                    title="Remove"
+                  >
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-5">
+          <div class="builder-panel">
+            <div class="builder-panel__head">
+              <h5><i class="bi bi-sliders me-2"></i>PDF Settings</h5>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label form-label-app">Document Title</label>
+              <input
+                type="text"
+                class="form-control form-control-app"
+                v-model="pdfSettings.title"
+                placeholder="TFC Mass [mm/dd/yyyy]"
+              />
+            </div>
+            <div class="mb-3">
+              <label class="form-label form-label-app">Lineup guide prepared by</label>
+              <input
+                type="text"
+                class="form-control form-control-app"
+                v-model="pdfSettings.author"
+                placeholder="Name"
+              />
+            </div>
+            <div class="form-check mb-4">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="includeMetadata"
+                v-model="pdfSettings.includeMetadata"
+              />
+              <label class="form-check-label" for="includeMetadata">
+                Include metadata (author, category, tags) in each section
+              </label>
+            </div>
+
+            <div class="d-flex flex-column gap-2 mt-3">
+              <button 
+                @click="generatePDF" 
+                :disabled="generating || !user" 
+                class="btn w-100 fw-bold transition-all"
+                :class="!user ? 'btn-secondary text-muted opacity-75 custom-lock-cursor' : 'btn-primary'">
+                
+                <span v-if="generating">
+                  <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  Generating Document...
+                </span>
+                <span v-else-if="!user">
+                  <i class="bi bi-lock-fill me-1"></i> Log In to Generate PDF
+                </span>
+                <span v-else>
+                  <i class="bi bi-file-earmark-pdf-fill me-1"></i> Generate PDF
+                </span>
+              </button>
+
+              <div v-if="!user" class="text-muted text-center small mt-2">
+                <i class="bi bi-info-circle"></i> You must be signed in to export files.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+
+          <div class="modal-header">
+            <h5 class="modal-title">Login</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal">
+            </button>
+          </div>
+
+          <form @submit.prevent="login">
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input
+                  type="email"
+                  class="form-control"
+                  v-model="loginForm.email"
+                  required>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input
+                  type="password"
+                  class="form-control"
+                  v-model="loginForm.password"
+                  required>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal">
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                class="btn btn-primary">
+                Login
+              </button>
+            </div>
+          </form>
+
+          <div class="text-center pb-3">
+            <a
+              href="#"
+              data-bs-toggle="modal"
+              data-bs-dismiss="modal"
+              data-bs-target="#registerModal">
+              Create an account
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+
+          <div class="modal-header">
+            <h5 class="modal-title">Register</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal">
+            </button>
+          </div>
+
+          <form @submit.prevent="register">
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  v-model="registerForm.username"
+                  required>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input
+                  type="email"
+                  class="form-control"
+                  v-model="registerForm.email"
+                  required>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input
+                  type="password"
+                  class="form-control"
+                  v-model="registerForm.password"
+                  required>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal">
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                class="btn btn-success">
+                Register
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="editModal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editModalLabel"><i class="bi bi-pencil-square"></i> Edit Song Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form @submit.prevent="updateContent">
+              <div class="mb-3">
+                <label class="form-label fw-bold">Title</label>
+                <input type="text" class="form-control" v-model="editForm.title" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold">Author / Artist</label>
+                <input type="text" class="form-control" v-model="editForm.author">
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold">Category</label>
+                <input type="text" class="form-control" v-model="editForm.category">
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold">Body / Lyrics / Content</label>
+                <textarea class="form-control" rows="8" v-model="editForm.body" required></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-bold">Tags (Comma separated)</label>
+                <input type="text" class="form-control" v-model="editForm.tags">
+              </div>
+               
+              <div class="modal-footer px-0 pb-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" :disabled="updating">
+                  <span v-if="updating" class="spinner-border spinner-border-sm" role="status"></span>
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="text-center py-2 mb-0 text-muted bg-light border-top mt-5">
+      <div class="container-fluid">
+        <p class="mb-1">&copy; 2026 LineUpMaker [Demo Version]. All Rights Reserved.</p>
+        <p class="small mb-0">Site by Jesh.</p>
+      </div>
+    </footer>
+
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
