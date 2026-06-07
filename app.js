@@ -1,6 +1,6 @@
 const { createApp } = Vue;
 
-const API_BASE = "https://lineupmakerdemo-server.onrender.com";
+const API_BASE = "https://lineupmakerdemo-server.onrender.com/api";
 
 createApp({
   data() {
