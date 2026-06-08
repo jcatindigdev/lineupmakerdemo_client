@@ -198,6 +198,20 @@ createApp({
       }
     },
 
+    switchTab(tab) {
+      this.activeTab = tab;
+
+      const navbar = document.getElementById('navbarNav');
+
+      if (navbar.classList.contains('show')) {
+        const bsCollapse =
+          bootstrap.Collapse.getInstance(navbar) ||
+          new bootstrap.Collapse(navbar, { toggle: false });
+
+        bsCollapse.hide();
+      }
+    },
+
     showAlert(message, type = "success") {
       this.alert = { message, type };
       setTimeout(() => (this.alert.message = ""), 4000);

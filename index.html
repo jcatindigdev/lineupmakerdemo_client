@@ -33,19 +33,19 @@
           <ul class="navbar-nav ms-auto align-items-lg-center gap-1 pt-2 pt-lg-0 pb-2 pb-lg-0">
             <li class="nav-item">
               <a class="nav-link" :class="{ active: activeTab === 'library' }"
-                href="#" @click.prevent="activeTab = 'library'">
+                href="#" @click.prevent="switchTab('library')">
                 <i class="bi bi-collection"></i> Library
               </a>
             </li>
             <li class="nav-item" v-if="isAdminUser">
               <a class="nav-link" :class="{ active: activeTab === 'upload' }"
-                href="#" @click.prevent="activeTab = 'upload'">
+                href="#" @click.prevent="switchTab('upload')">
                 <i class="bi bi-upload"></i> Upload
               </a>
             </li>
             <li class="nav-item">
               <a class="nav-link position-relative" :class="{ active: activeTab === 'builder' }"
-                href="#" @click.prevent="activeTab = 'builder'">
+                href="#" @click.prevent="switchTab('builder')">
                 <i class="bi bi-layers"></i> Builder
                 <span v-if="selectedItems.length > 0" class="badge-count">{{ selectedItems.length }}</span>
               </a>
@@ -83,7 +83,7 @@
           <h2 class="section-title">Song Library</h2>
           <p class="section-sub">Search, browse, and select songs for your current lineup.</p>
         </div>
-        <button class="btn btn-primary-app" @click="activeTab = 'upload'">
+        <button class="btn btn-primary-app" @click="switchTab('upload')">
           <i class="bi bi-plus-lg"></i> Add Song
         </button>
       </div>
@@ -120,7 +120,7 @@
       <!-- Empty -->
       <div v-else-if="contentItems.length === 0" class="empty-state">
         <i class="bi bi-inbox-fill"></i>
-        <p>No songs found. <a href="#" @click.prevent="activeTab = 'upload'">Upload something!</a></p>
+        <p>No songs found. <a href="#" @click.prevent="switchTab('upload')">Upload something!</a></p>
       </div>
 
       <!-- Cards grid -->
@@ -281,7 +281,7 @@
 
       <div v-if="selectedItems.length === 0" class="empty-state">
         <i class="bi bi-layers"></i>
-        <p>No items added yet. <a href="#" @click.prevent="activeTab = 'library'">Select from Library.</a></p>
+        <p>No items added yet. <a href="#" @click.prevent="switchTab('library')">Select from Library.</a></p>
       </div>
 
       <div class="row g-4" v-else>
