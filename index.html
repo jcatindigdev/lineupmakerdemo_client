@@ -347,18 +347,18 @@
               <input type="text" class="form-control form-control-app"
                 v-model="pdfSettings.author" placeholder="Name" />
             </div>
-            <div class="form-check mb-4">
+<!--             <div class="form-check mb-4">
               <input class="form-check-input" type="checkbox"
                 id="includeMetadata" v-model="pdfSettings.includeMetadata" />
               <label class="form-check-label" for="includeMetadata">
                 Include metadata (author, category, tags) in each section
               </label>
-            </div>
+            </div> -->
 
             <div class="d-flex flex-column gap-2 mt-3">
-              <button @click="previewPDF" class="btn btn-outline-secondary w-100">
+<!--               <button @click="previewPDF" class="btn btn-outline-secondary w-100">
                 <i class="bi bi-eye me-1"></i> Preview
-              </button>
+              </button> -->
 
               <button @click="generatePDF"
                 :disabled="generating || !user"
@@ -387,7 +387,7 @@
     </div>
 
     <!-- ── Print Preview Modal ─────────────────────────────────── -->
-    <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+<!--     <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-fullscreen">
         <div class="modal-content modal-preview-content">
           <div class="modal-header modal-preview-header">
@@ -405,7 +405,7 @@
           <div class="modal-body modal-preview-body" id="preview-document"></div>
         </div>
       </div>
-    </div>
+    </div> -->
 
     <!-- ── Login Modal ────────────────────────────────────────── -->
     <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
