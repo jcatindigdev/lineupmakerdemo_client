@@ -131,6 +131,7 @@ createApp({
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "Authorization": `Bearer ${this.getToken()}`
             },
             body: JSON.stringify(this.registerForm),
           }
