@@ -51,17 +51,28 @@
               </a>
             </li>
             <li class="nav-item dropdown" v-if="isAdminUser">
-              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <a
+                class="nav-link dropdown-toggle"
+                href="#"
+                role="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
                 <i class="bi bi-shield-lock"></i> Admin
               </a>
 
               <ul class="dropdown-menu dropdown-menu-end">
+
                 <li>
-                  <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#registerModal">
+                  <a
+                    class="dropdown-item"
+                    href="#"
+                    data-bs-toggle="modal"
+                    data-bs-target="#createUserModal">
                     <i class="bi bi-person-plus"></i>
                     Create User
                   </a>
                 </li>
+
               </ul>
             </li>
             <li class="nav-item ms-lg-2">
@@ -97,7 +108,10 @@
           <h2 class="section-title">Song Library</h2>
           <p class="section-sub">Search, browse, and select songs for your current lineup.</p>
         </div>
-        <button class="btn btn-primary-app" @click="switchTab('upload')">
+        <button
+          v-if="isAdminUser"
+          class="btn btn-primary-app"
+          @click="switchTab('upload')">
           <i class="bi bi-plus-lg"></i> Add Song
         </button>
       </div>
@@ -212,7 +226,10 @@
     <!-- ═══════════════════════════════════════════════════════════
          TAB: UPLOAD
     ════════════════════════════════════════════════════════════ -->
-    <div v-show="activeTab === 'upload'" class="container-fluid px-3 px-md-4 py-3">
+    <div
+      v-if="isAdminUser"
+      v-show="activeTab === 'upload'"
+      class="container-fluid px-3 px-md-4 py-3">
 
       <div class="section-header">
         <div>
@@ -507,7 +524,7 @@
                 <input
                   type="text"
                   class="form-control"
-                  v-model="registerForm.username"
+                  v-model="adminCreateForm.username"
                   required
                 />
               </div>
@@ -517,7 +534,7 @@
                 <input
                   type="email"
                   class="form-control"
-                  v-model="registerForm.email"
+                  v-model="adminCreateForm.email"
                   required
                 />
               </div>
@@ -527,7 +544,7 @@
                 <input
                   type="password"
                   class="form-control"
-                  v-model="registerForm.password"
+                  v-model="adminCreateForm.password"
                   required
                 />
               </div>
@@ -537,7 +554,7 @@
                   class="form-check-input"
                   type="checkbox"
                   id="isAdminCheckbox"
-                  v-model="registerForm.isAdmin"
+                  v-model="adminCreateForm.isAdmin"
                 />
 
                 <label

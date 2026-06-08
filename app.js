@@ -97,7 +97,6 @@ createApp({
 
     async createUser() {
       try {
-
         const res = await fetch(
           `${API_BASE}/auth/admin/create-user`,
           {
@@ -123,10 +122,13 @@ createApp({
             isAdmin: false
           };
 
-          const modalEl = document.getElementById("createUserModal");
+          const modalEl =
+            document.getElementById("createUserModal");
 
           if (modalEl) {
-            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+            bootstrap.Modal
+              .getOrCreateInstance(modalEl)
+              .hide();
           }
 
         } else {
@@ -134,7 +136,11 @@ createApp({
         }
 
       } catch (error) {
-        this.showAlert("Failed to create user.", "danger");
+        console.error(error);
+        this.showAlert(
+          "Failed to create user.",
+          "danger"
+        );
       }
     },
 
