@@ -50,7 +50,14 @@ createApp({
         username: "",
         email: "",
         password: "",
-        isAdmin: "false"
+        isAdmin: false
+      },
+
+      adminCreateForm: {
+        username: "",
+        email: "",
+        password: "",
+        isAdmin: false
       },
 
       editForm: {
@@ -86,6 +93,49 @@ createApp({
 
     getToken() {
       return localStorage.getItem("token");
+    },
+
+    async createUser() {
+      try {
+
+        const res = await fetch(
+          `${API_BASE}/auth/admin/create-user`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${this.getToken()}`
+            },
+            body: JSON.stringify(this.adminCreateForm)
+          }
+        );
+
+        const data = await res.json();
+
+        if (data.success) {
+
+          this.showAlert(data.message);
+
+          this.adminCreateForm = {
+            username: "",
+            email: "",
+            password: "",
+            isAdmin: false
+          };
+
+          const modalEl = document.getElementById("createUserModal");
+
+          if (modalEl) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+          }
+
+        } else {
+          this.showAlert(data.message, "danger");
+        }
+
+      } catch (error) {
+        this.showAlert("Failed to create user.", "danger");
+      }
     },
 
     async checkAuth() {
