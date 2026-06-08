@@ -50,6 +50,20 @@
                 <span v-if="selectedItems.length > 0" class="badge-count">{{ selectedItems.length }}</span>
               </a>
             </li>
+            <li class="nav-item dropdown" v-if="isAdminUser">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-shield-lock"></i> Admin
+              </a>
+
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#registerModal">
+                    <i class="bi bi-person-plus"></i>
+                    Create User
+                  </a>
+                </li>
+              </ul>
+            </li>
             <li class="nav-item ms-lg-2">
               <button v-if="!user" class="btn btn-nav-login w-100"
                 data-bs-toggle="modal" data-bs-target="#loginModal">

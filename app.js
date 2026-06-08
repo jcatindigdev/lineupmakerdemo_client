@@ -50,6 +50,7 @@ createApp({
         username: "",
         email: "",
         password: "",
+        isAdmin: "false"
       },
 
       editForm: {
