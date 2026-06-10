@@ -1,7 +1,7 @@
 const { createApp } = Vue;
 
 const API_BASE = "https://lineupmakerdemo-server.onrender.com/api";
-
+//python3 -m http.server 3000
 createApp({
   data() {
     return {
