@@ -1,9 +1,9 @@
 const { createApp } = Vue;
 
-const API_BASE = "https://lineupmakerdemo-server.onrender.com/api"
-const VOICE_PARTS = ["soprano", "alto", "tenor", "bass", "baritone", "solo"];
+const API_BASE = "https://lineupmakerdemo-server.onrender.com/api";
+const VOICE_PARTS = ["fullSong", "soprano", "alto", "tenor", "bass", "baritone", "solo"];
 const VOICE_LABELS = {
-  soprano: "Soprano", alto: "Alto", tenor: "Tenor",
+  fullSong: "Full Song", soprano: "Soprano", alto: "Alto", tenor: "Tenor",
   bass: "Bass", baritone: "Baritone", solo: "Solo",
 };
 
@@ -28,7 +28,7 @@ createApp({
         category: "",
         tags: "",
         fileType: "",
-        voicings: { soprano: "", alto: "", tenor: "", bass: "", baritone: "", solo: "" },
+        voicings: { fullSong: "", soprano: "", alto: "", tenor: "", bass: "", baritone: "", solo: "" },
         scoreUrl: "",
       },
       uploading: false,
@@ -48,7 +48,7 @@ createApp({
       adminCreateForm: { username: "", email: "", password: "", isAdmin: false },
       editForm: {
         _id: "", title: "", body: "", author: "", category: "", tags: "",
-        voicings: { soprano: "", alto: "", tenor: "", bass: "", baritone: "", solo: "" },
+        voicings: { fullSong: "", soprano: "", alto: "", tenor: "", bass: "", baritone: "", solo: "" },
         scoreUrl: "",
       },
       updating: false,
@@ -289,6 +289,7 @@ createApp({
         category: item.category || "",
         tags: Array.isArray(item.tags) ? item.tags.join(", ") : "",
         voicings: {
+          fullSong: item.voicings?.fullSong || "",
           soprano:  item.voicings?.soprano  || "",
           alto:     item.voicings?.alto     || "",
           tenor:    item.voicings?.tenor    || "",
@@ -316,6 +317,7 @@ createApp({
           category: this.editForm.category,
           tags: this.editForm.tags.split(",").map(t => t.trim()).filter(Boolean),
           voicings: {
+            fullSong: this.editForm.voicings.fullSong.trim(),
             soprano:  this.editForm.voicings.soprano.trim(),
             alto:     this.editForm.voicings.alto.trim(),
             tenor:    this.editForm.voicings.tenor.trim(),
@@ -362,6 +364,7 @@ createApp({
           tags: this.form.tags.split(",").map((t) => t.trim()).filter(Boolean),
           fileType: this.form.fileType,
           voicings: {
+            fullSong: this.form.voicings.fullSong.trim(),
             soprano:  this.form.voicings.soprano.trim(),
             alto:     this.form.voicings.alto.trim(),
             tenor:    this.form.voicings.tenor.trim(),
@@ -395,7 +398,7 @@ createApp({
     resetForm() {
       this.form = {
         title: "", body: "", author: "", category: "", tags: "", fileType: "",
-        voicings: { soprano: "", alto: "", tenor: "", bass: "", baritone: "", solo: "" },
+        voicings: { fullSong: "", soprano: "", alto: "", tenor: "", bass: "", baritone: "", solo: "" },
         scoreUrl: "",
       };
     },
@@ -611,7 +614,7 @@ createApp({
             ${activeParts.map(part => `
               <div class="preview-page__resource-row">
                 <span>${this.voicingLabel(part)}:</span>
-                <a href="${item.voicings[part]}" target="_blank" rel="noopener">Open track here</a>
+                <a href="${item.voicings[part]}" target="_blank" rel="noopener">Open audio track</a>
               </div>`).join("")}
             ${hasScore ? `
               <div class="preview-page__resource-row">
