@@ -1,6 +1,12 @@
 const { createApp } = Vue;
 
-const API_BASE = "https://lineupmakerdemo-server.onrender.com/api";
+const API_BASE = "https://lineupmakerdemo-server.onrender.com/api"
+const VOICE_PARTS = ["soprano", "alto", "tenor", "bass", "baritone", "solo"];
+const VOICE_LABELS = {
+  soprano: "Soprano", alto: "Alto", tenor: "Tenor",
+  bass: "Bass", baritone: "Baritone", solo: "Solo",
+};
+
 //python3 -m http.server 3000
 createApp({
   data() {
@@ -22,6 +28,8 @@ createApp({
         category: "",
         tags: "",
         fileType: "",
+        voicings: { soprano: "", alto: "", tenor: "", bass: "", baritone: "", solo: "" },
+        scoreUrl: "",
       },
       uploading: false,
       pdfSettings: {
@@ -38,7 +46,11 @@ createApp({
       loginForm: { email: "", password: "" },
       registerForm: { username: "", email: "", password: "", isAdmin: false },
       adminCreateForm: { username: "", email: "", password: "", isAdmin: false },
-      editForm: { _id: "", title: "", body: "", author: "", category: "", tags: "" },
+      editForm: {
+        _id: "", title: "", body: "", author: "", category: "", tags: "",
+        voicings: { soprano: "", alto: "", tenor: "", bass: "", baritone: "", solo: "" },
+        scoreUrl: "",
+      },
       updating: false,
     };
   },
@@ -182,6 +194,20 @@ createApp({
       return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
     },
 
+    // ── Voicing / Resource helpers ─────────────────────────────────────────
+    activeVoicings(item) {
+      if (!item || !item.voicings) return [];
+      return VOICE_PARTS.filter((part) => item.voicings[part]);
+    },
+
+    hasResources(item) {
+      return this.activeVoicings(item).length > 0 || !!(item && item.scoreUrl);
+    },
+
+    voicingLabel(part) {
+      return VOICE_LABELS[part] || part;
+    },
+
     async fetchContent(page = 1) {
       this.loading = true;
       try {
@@ -261,7 +287,16 @@ createApp({
         body: item.body,
         author: item.author || "",
         category: item.category || "",
-        tags: Array.isArray(item.tags) ? item.tags.join(", ") : ""
+        tags: Array.isArray(item.tags) ? item.tags.join(", ") : "",
+        voicings: {
+          soprano:  item.voicings?.soprano  || "",
+          alto:     item.voicings?.alto     || "",
+          tenor:    item.voicings?.tenor    || "",
+          bass:     item.voicings?.bass     || "",
+          baritone: item.voicings?.baritone || "",
+          solo:     item.voicings?.solo     || "",
+        },
+        scoreUrl: item.scoreUrl || "",
       };
       const modalEl = document.getElementById("editModal");
       if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -279,7 +314,16 @@ createApp({
           body: this.editForm.body.trim(),
           author: this.editForm.author.trim() || "Anonymous",
           category: this.editForm.category,
-          tags: this.editForm.tags.split(",").map(t => t.trim()).filter(Boolean)
+          tags: this.editForm.tags.split(",").map(t => t.trim()).filter(Boolean),
+          voicings: {
+            soprano:  this.editForm.voicings.soprano.trim(),
+            alto:     this.editForm.voicings.alto.trim(),
+            tenor:    this.editForm.voicings.tenor.trim(),
+            bass:     this.editForm.voicings.bass.trim(),
+            baritone: this.editForm.voicings.baritone.trim(),
+            solo:     this.editForm.voicings.solo.trim(),
+          },
+          scoreUrl: this.editForm.scoreUrl.trim(),
         };
         const res = await fetch(`${API_BASE}/content/${this.editForm._id}`, {
           method: "PUT",
@@ -317,6 +361,15 @@ createApp({
           category: this.form.category,
           tags: this.form.tags.split(",").map((t) => t.trim()).filter(Boolean),
           fileType: this.form.fileType,
+          voicings: {
+            soprano:  this.form.voicings.soprano.trim(),
+            alto:     this.form.voicings.alto.trim(),
+            tenor:    this.form.voicings.tenor.trim(),
+            bass:     this.form.voicings.bass.trim(),
+            baritone: this.form.voicings.baritone.trim(),
+            solo:     this.form.voicings.solo.trim(),
+          },
+          scoreUrl: this.form.scoreUrl.trim(),
         };
         const res = await fetch(`${API_BASE}/content`, {
           method: "POST",
@@ -340,7 +393,11 @@ createApp({
     },
 
     resetForm() {
-      this.form = { title: "", body: "", author: "", category: "", tags: "", fileType: "" };
+      this.form = {
+        title: "", body: "", author: "", category: "", tags: "", fileType: "",
+        voicings: { soprano: "", alto: "", tenor: "", bass: "", baritone: "", solo: "" },
+        scoreUrl: "",
+      };
     },
 
     moveItem(from, to) {
@@ -486,6 +543,20 @@ createApp({
         }
         txt += DASH + "\n\n";
         txt += (item.body || "") + "\n\n";
+
+        // ── Voicings & Resources ──────────────────────────────────────
+        const activeParts = this.activeVoicings(item);
+        if (activeParts.length || item.scoreUrl) {
+          txt += "Voicings & Resources:\n";
+          activeParts.forEach((part) => {
+            txt += `  ${this.voicingLabel(part)}: ${item.voicings[part]}\n`;
+          });
+          if (item.scoreUrl) {
+            txt += `  Music Score: ${item.scoreUrl}\n`;
+          }
+          txt += "\n";
+        }
+
         txt += LINE + "\n\n";
       });
 
@@ -531,7 +602,25 @@ createApp({
           </ul>
         </div>`;
 
-      const pagesHTML = this.selectedItems.map((item, idx) => `
+      const pagesHTML = this.selectedItems.map((item, idx) => {
+        const activeParts = this.activeVoicings(item);
+        const hasScore = !!item.scoreUrl;
+        const resourcesHTML = (activeParts.length || hasScore) ? `
+          <div class="preview-page__resources">
+            <div class="preview-page__resources-title">Voicings &amp; Resources</div>
+            ${activeParts.map(part => `
+              <div class="preview-page__resource-row">
+                <span>${this.voicingLabel(part)}:</span>
+                <a href="${item.voicings[part]}" target="_blank" rel="noopener">Open track here</a>
+              </div>`).join("")}
+            ${hasScore ? `
+              <div class="preview-page__resource-row">
+                <span>Music Score:</span>
+                <a href="${item.scoreUrl}" target="_blank" rel="noopener">View music score</a>
+              </div>` : ""}
+          </div>` : "";
+
+        return `
         <div class="preview-page">
           <div class="preview-page__bar"></div>
           <div class="preview-page__inner">
@@ -546,11 +635,13 @@ createApp({
             </div>` : ""}
             <hr class="preview-page__divider"/>
             <div class="preview-page__body">${item.body}</div>
+            ${resourcesHTML}
           </div>
           <div class="preview-page__footer">
             ${docTitle} &mdash; Section ${idx + 1} of ${this.selectedItems.length}
           </div>
-        </div>`).join("");
+        </div>`;
+      }).join("");
 
       document.getElementById("preview-document").innerHTML = `
         <style>
@@ -578,6 +669,10 @@ createApp({
           .preview-page__meta { font-size: 11px; color: #999; display: flex; gap: 14px; flex-wrap: wrap; margin: 4px 0 10px 44px; }
           .preview-page__divider { border: none; border-top: 1px solid #e8e0d8; margin: 10px 0 16px; }
           .preview-page__body { font-size: 13px; color: #2c2c2c; line-height: 1.85; white-space: pre-wrap; }
+          .preview-page__resources { margin-top: 16px; padding-top: 12px; border-top: 1px solid #e8d5b7; }
+          .preview-page__resources-title { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #c9a96e; margin-bottom: 6px; }
+          .preview-page__resource-row { font-size: 11px; color: #666; display: flex; gap: 6px; margin-bottom: 3px; }
+          .preview-page__resource-row a { color: #1a5ca8; text-decoration: underline; }
           .preview-page__footer { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 52px; font-size: 10px; color: #bbb; text-align: center; border-top: 1px solid #f0f0f0; background: white; }
         </style>
         ${coverHTML}${tocHTML}${pagesHTML}

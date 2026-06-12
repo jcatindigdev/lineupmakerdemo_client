@@ -736,3 +736,62 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
   .builder-panel     { padding: 1.5rem; }
   .floating-bar      { bottom: 1.5rem; }
 }
+
+
+/* ══════════════════════════════════════════════════════════
+   VOICINGS & RESOURCES — additions
+   ══════════════════════════════════════════════════════════ */
+
+/* ─ Resource badges on library cards ─ */
+.content-card__resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+}
+
+.resource-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.66rem;
+  font-weight: 500;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.resource-badge--audio {
+  background: var(--navy);
+  color: var(--gold-light);
+}
+
+.resource-badge--score {
+  background: var(--gold);
+  color: var(--navy);
+}
+
+/* ─ Voicings & Score section ─ */
+.resources-section {
+  border-top: 1.5px dashed var(--border);
+  padding-top: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.resources-section__head {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.resources-section__head i {
+  color: var(--gold);
+}
+
+.resources-section__head:not(:first-child) {
+  margin-top: 1.5rem;
+}

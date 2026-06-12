@@ -176,6 +176,14 @@
             <div v-if="item.tags && item.tags.length" class="content-card__tags">
               <span v-for="tag in item.tags" :key="tag" class="tag-pill">{{ tag }}</span>
             </div>
+            <div v-if="hasResources(item)" class="content-card__resources">
+              <span v-for="part in activeVoicings(item)" :key="part" class="resource-badge resource-badge--audio">
+                <i class="bi bi-mic-fill"></i> {{ voicingLabel(part) }}
+              </span>
+              <span v-if="item.scoreUrl" class="resource-badge resource-badge--score">
+                <i class="bi bi-file-earmark-music-fill"></i> Score
+              </span>
+            </div>
             <div class="content-card__actions" @click.stop>
               <div class="btn-group" v-if="isAdminUser">
                 <button @click="openEditModal(item)" class="btn btn-sm btn-outline-primary">
@@ -279,6 +287,56 @@
           <label class="form-label form-label-app">Body / Lyrics <span class="text-danger">*</span></label>
           <textarea class="form-control form-control-app"
             v-model="form.body" rows="10" placeholder="Paste lyrics here"></textarea>
+        </div>
+
+        <!-- Voicings & Score -->
+        <div class="resources-section">
+          <div class="resources-section__head">
+            <i class="bi bi-music-note-list"></i> Voicing Audio Links
+            <small class="text-muted ms-1">(optional — paste shareable links)</small>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-sm-6 col-md-4">
+              <label class="form-label form-label-app"><i class="bi bi-mic"></i> Soprano</label>
+              <input type="url" class="form-control form-control-app"
+                v-model="form.voicings.soprano" placeholder="https://..." />
+            </div>
+            <div class="col-12 col-sm-6 col-md-4">
+              <label class="form-label form-label-app"><i class="bi bi-mic"></i> Alto</label>
+              <input type="url" class="form-control form-control-app"
+                v-model="form.voicings.alto" placeholder="https://..." />
+            </div>
+            <div class="col-12 col-sm-6 col-md-4">
+              <label class="form-label form-label-app"><i class="bi bi-mic"></i> Tenor</label>
+              <input type="url" class="form-control form-control-app"
+                v-model="form.voicings.tenor" placeholder="https://..." />
+            </div>
+            <div class="col-12 col-sm-6 col-md-4">
+              <label class="form-label form-label-app"><i class="bi bi-mic"></i> Bass</label>
+              <input type="url" class="form-control form-control-app"
+                v-model="form.voicings.bass" placeholder="https://..." />
+            </div>
+            <div class="col-12 col-sm-6 col-md-4">
+              <label class="form-label form-label-app"><i class="bi bi-mic"></i> Baritone</label>
+              <input type="url" class="form-control form-control-app"
+                v-model="form.voicings.baritone" placeholder="https://..." />
+            </div>
+            <div class="col-12 col-sm-6 col-md-4">
+              <label class="form-label form-label-app"><i class="bi bi-mic"></i> Solo</label>
+              <input type="url" class="form-control form-control-app"
+                v-model="form.voicings.solo" placeholder="https://..." />
+            </div>
+          </div>
+
+          <div class="resources-section__head">
+            <i class="bi bi-file-earmark-music"></i> Music Score
+            <small class="text-muted ms-1">(optional — paste shareable link)</small>
+          </div>
+          <div class="mb-1">
+            <label class="form-label form-label-app">Score Link</label>
+            <input type="url" class="form-control form-control-app"
+              v-model="form.scoreUrl" placeholder="https://drive.google.com/..." />
+          </div>
         </div>
 
         <div class="d-flex flex-wrap gap-2">
@@ -517,6 +575,49 @@
               <div class="mb-3">
                 <label class="form-label fw-bold">Tags (comma-separated)</label>
                 <input type="text" class="form-control" v-model="editForm.tags" />
+              </div>
+
+              <!-- Voicings & Score -->
+              <div class="resources-section">
+                <div class="resources-section__head">
+                  <i class="bi bi-music-note-list"></i> Voicing Audio Links
+                  <small class="text-muted ms-1">(optional)</small>
+                </div>
+                <div class="row g-3 mb-3">
+                  <div class="col-12 col-sm-6 col-md-4">
+                    <label class="form-label form-label-app"><i class="bi bi-mic"></i> Soprano</label>
+                    <input type="url" class="form-control" v-model="editForm.voicings.soprano" placeholder="https://..." />
+                  </div>
+                  <div class="col-12 col-sm-6 col-md-4">
+                    <label class="form-label form-label-app"><i class="bi bi-mic"></i> Alto</label>
+                    <input type="url" class="form-control" v-model="editForm.voicings.alto" placeholder="https://..." />
+                  </div>
+                  <div class="col-12 col-sm-6 col-md-4">
+                    <label class="form-label form-label-app"><i class="bi bi-mic"></i> Tenor</label>
+                    <input type="url" class="form-control" v-model="editForm.voicings.tenor" placeholder="https://..." />
+                  </div>
+                  <div class="col-12 col-sm-6 col-md-4">
+                    <label class="form-label form-label-app"><i class="bi bi-mic"></i> Bass</label>
+                    <input type="url" class="form-control" v-model="editForm.voicings.bass" placeholder="https://..." />
+                  </div>
+                  <div class="col-12 col-sm-6 col-md-4">
+                    <label class="form-label form-label-app"><i class="bi bi-mic"></i> Baritone</label>
+                    <input type="url" class="form-control" v-model="editForm.voicings.baritone" placeholder="https://..." />
+                  </div>
+                  <div class="col-12 col-sm-6 col-md-4">
+                    <label class="form-label form-label-app"><i class="bi bi-mic"></i> Solo</label>
+                    <input type="url" class="form-control" v-model="editForm.voicings.solo" placeholder="https://..." />
+                  </div>
+                </div>
+
+                <div class="resources-section__head">
+                  <i class="bi bi-file-earmark-music"></i> Music Score
+                  <small class="text-muted ms-1">(optional)</small>
+                </div>
+                <div class="mb-1">
+                  <label class="form-label form-label-app">Score Link</label>
+                  <input type="url" class="form-control" v-model="editForm.scoreUrl" placeholder="https://drive.google.com/..." />
+                </div>
               </div>
               <div class="modal-footer px-0 pb-0">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
