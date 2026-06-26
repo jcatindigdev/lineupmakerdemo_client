@@ -4,33 +4,86 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LineUp Maker Demo</title>
-  <link rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-    crossorigin="anonymous" />
-  <link rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap"
-    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <div id="app">
 
-  <!-- ── Navbar ───────────────────────────────────────────── -->
+  <!-- ══════════════════════════════════════════════════════
+       AUTH GATE — only visible when NOT logged in
+  ══════════════════════════════════════════════════════════ -->
+  <div v-if="!user" class="auth-gate">
+    <div class="auth-gate__card">
+      <div class="auth-gate__logo">
+        <i class="bi bi-file-earmark-pdf-fill"></i>
+        <span>LineUp Maker</span>
+        <span class="auth-gate__badge">[Demo]</span>
+      </div>
+      <p class="auth-gate__sub">Sign in to access TFC's lyric and chord library.</p>
+
+      <div v-if="alert.message" :class="`alert alert-${alert.type} py-2 mb-3`" role="alert" style="font-size:0.85rem;">
+        <i :class="`bi ${alert.type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle'} me-1`"></i>
+        {{ alert.message }}
+      </div>
+
+      <form @submit.prevent="login" autocomplete="on" novalidate>
+        <div class="mb-3">
+          <label class="form-label-app" for="gate-email">Email</label>
+          <input id="gate-email" type="email" class="form-control-app w-100"
+            v-model="loginForm.email" placeholder="you@example.com"
+            required autocomplete="email" />
+        </div>
+        <div class="mb-4">
+          <label class="form-label-app" for="gate-pass">Password</label>
+          <input id="gate-pass" type="password" class="form-control-app w-100"
+            v-model="loginForm.password" placeholder="••••••••"
+            required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-primary-app w-100 py-2" :disabled="loggingIn">
+          <span v-if="loggingIn" class="spinner-border spinner-border-sm me-2"></span>
+          <i v-else class="bi bi-box-arrow-in-right me-2"></i>
+          {{ loggingIn ? 'Signing in…' : 'Sign In' }}
+        </button>
+      </form>
+
+      <p class="auth-gate__footer">&copy; 2026 LineUp Maker [Demo]. Made for service.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       MAIN APP — only visible when logged in
+  ══════════════════════════════════════════════════════════ -->
+  <template v-if="user">
+
+  <!-- ── Navbar ─────────────────────────────────────────── -->
   <nav class="navbar navbar-expand-lg navbar-app">
     <div class="container-fluid px-3 px-md-4">
-      <a href="#" class="navbar-brand brand-logo">
+
+      <a href="#" class="navbar-brand brand-logo" @click.prevent="switchTab('library')">
         <i class="bi bi-file-earmark-pdf-fill"></i>
-        LineUp Maker <span class="brand-demo">[Demo]</span>
+        <span class="brand-name">LineUp Maker</span>
+        <span class="brand-demo">[Demo]</span>
       </a>
-      <button class="navbar-toggler" type="button"
-        data-bs-toggle="collapse" data-bs-target="#navbarNav"
-        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+
+      <!-- Mobile: builder badge + toggler -->
+      <div class="d-flex align-items-center gap-2 d-lg-none">
+        <button v-if="selectedItems.length > 0"
+          class="btn btn-sm btn-gold-pill"
+          @click="switchTab('builder')">
+          <i class="bi bi-layers-fill me-1"></i>{{ selectedItems.length }}
+        </button>
+        <button class="navbar-toggler" type="button"
+          data-bs-toggle="collapse" data-bs-target="#navbarNav"
+          aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+      </div>
+
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto align-items-lg-center gap-1 py-2 py-lg-0">
 
@@ -49,6 +102,13 @@
           </li>
 
           <li class="nav-item">
+            <a class="nav-link" :class="{ active: activeTab === 'guitarchords' }"
+              href="#" @click.prevent="switchTab('guitarchords')">
+              <i class="bi bi-guitar"></i> Guitar Chords
+            </a>
+          </li>
+
+          <li class="nav-item">
             <a class="nav-link position-relative" :class="{ active: activeTab === 'builder' }"
               href="#" @click.prevent="switchTab('builder')">
               <i class="bi bi-layers"></i> Builder
@@ -57,8 +117,8 @@
           </li>
 
           <li class="nav-item dropdown" v-if="isAdminUser">
-            <a class="nav-link dropdown-toggle" href="#"
-              role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <a class="nav-link dropdown-toggle" href="#" role="button"
+              data-bs-toggle="dropdown" aria-expanded="false">
               <i class="bi bi-shield-lock"></i> Admin
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
@@ -71,16 +131,16 @@
             </ul>
           </li>
 
-          <li class="nav-item ms-lg-1" v-if="!user">
-            <button class="btn btn-nav-login w-100"
-              data-bs-toggle="modal" data-bs-target="#loginModal">
-              <i class="bi bi-person-fill me-1"></i> Login
-            </button>
-          </li>
-          <li class="nav-item ms-lg-1" v-if="user">
-            <button class="btn btn-nav-logout w-100" @click="logout">
-              <i class="bi bi-box-arrow-right me-1"></i> Logout
-            </button>
+          <!-- User pill -->
+          <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
+            <div class="nav-user-pill">
+              <span class="nav-user-pill__name">
+                <i class="bi bi-person-circle me-1"></i>{{ user.username }}
+              </span>
+              <button class="nav-user-pill__logout" @click="logout" title="Sign out">
+                <i class="bi bi-box-arrow-right"></i>
+              </button>
+            </div>
           </li>
 
         </ul>
@@ -88,7 +148,7 @@
     </div>
   </nav>
 
-  <!-- ── Alert ────────────────────────────────────────────── -->
+  <!-- ── Global Alert ──────────────────────────────────── -->
   <div class="container-fluid px-3 px-md-4 mt-3">
     <div v-if="alert.message"
       :class="`alert alert-${alert.type} alert-dismissible fade show`" role="alert">
@@ -98,14 +158,14 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════
        TAB: LYRIC LIBRARY
-  ══════════════════════════════════════════════════════════ -->
+  ══════════════════════════════════════════════════════ -->
   <div v-show="activeTab === 'library'" class="container-fluid px-3 px-md-4 py-3">
     <div class="section-header">
       <div>
         <h2 class="section-title">Lyric Library</h2>
-        <p class="section-sub">Search lyrics here.</p>
+        <p class="section-sub">Search lyrics here. Click a card to view full details.</p>
       </div>
       <button v-if="isAdminUser" class="btn btn-primary-app" @click="switchToUpload('song')">
         <i class="bi bi-plus-lg"></i> Add Lyrics
@@ -116,8 +176,7 @@
       <div class="search-group">
         <div class="search-row-main">
           <span class="search-icon"><i class="bi bi-search"></i></span>
-          <input type="text" class="search-input"
-            placeholder="Search by title, lyrics, tags…"
+          <input type="text" class="search-input" placeholder="Search by title…"
             v-model="searchQuery" @input="debouncedSearch" />
           <button class="btn-search-clear" @click="clearSearch" title="Clear">
             <i class="bi bi-x-lg"></i>
@@ -145,9 +204,8 @@
     </div>
     <div v-else class="row g-3 mt-1">
       <div v-for="item in contentItems" :key="item._id" class="col-12 col-sm-6 col-lg-4">
-        <div class="content-card"
-          :class="{ 'content-card--selected': isSelected(item._id) }"
-          @click="toggleSelect(item)">
+        <div class="content-card" :class="{ 'content-card--selected': isSelected(item._id) }"
+          @click="openDetail(item, 'library')">
           <div class="content-card__header">
             <span class="content-card__category">{{ item.category }}</span>
             <span v-if="isSelected(item._id)" class="content-card__check">
@@ -172,13 +230,20 @@
             </span>
           </div>
           <div class="content-card__actions" @click.stop>
-            <div class="btn-group" v-if="isAdminUser">
-              <button @click="openEditModal(item)" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-pencil-square"></i> Edit
+            <div class="d-flex gap-1 flex-wrap">
+              <button @click="toggleSelect(item)" class="btn btn-sm"
+                :class="isSelected(item._id) ? 'btn-success' : 'btn-outline-secondary'">
+                <i :class="isSelected(item._id) ? 'bi bi-check-circle-fill' : 'bi bi-plus-circle'"></i>
+                {{ isSelected(item._id) ? 'Added' : 'Add to Builder' }}
               </button>
-              <button @click="deleteItem(item._id)" class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-trash"></i> Delete
-              </button>
+              <div class="btn-group" v-if="isAdminUser">
+                <button @click="openEditModal(item)" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+                <button @click="deleteItem(item._id)" class="btn btn-sm btn-outline-danger">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -214,14 +279,14 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════
        TAB: CHORD LIBRARY
-  ══════════════════════════════════════════════════════════ -->
+  ══════════════════════════════════════════════════════ -->
   <div v-show="activeTab === 'chords'" class="container-fluid px-3 px-md-4 py-3">
     <div class="section-header">
       <div>
         <h2 class="section-title">Chord Library</h2>
-        <p class="section-sub">Search chords here.</p>
+        <p class="section-sub">Search chords here. Click a card to view full details.</p>
       </div>
       <button v-if="isAdminUser" class="btn btn-primary-app" @click="switchToUpload('chord')">
         <i class="bi bi-plus-lg"></i> Add Chords
@@ -232,8 +297,7 @@
       <div class="search-group">
         <div class="search-row-main">
           <span class="search-icon"><i class="bi bi-search"></i></span>
-          <input type="text" class="search-input"
-            placeholder="Search chords here"
+          <input type="text" class="search-input" placeholder="Search by title…"
             v-model="chordSearchQuery" @input="debouncedChordSearch" />
           <button class="btn-search-clear" @click="clearChordSearch" title="Clear">
             <i class="bi bi-x-lg"></i>
@@ -263,14 +327,10 @@
       <div v-for="item in chordItems" :key="item._id" class="col-12 col-sm-6 col-lg-4">
         <div class="content-card content-card--chord"
           :class="{ 'content-card--selected': isSelected(item._id) }"
-          @click="toggleSelect(item)">
+          @click="openDetail(item, 'chords')">
           <div class="content-card__header">
             <span class="content-card__category">{{ item.category }}</span>
             <div class="d-flex align-items-center gap-2">
-              <span class="chord-type-badge"><i class="bi bi-music-note-beamed"></i> Chords</span>
-              <span v-if="isSelected(item._id)" class="content-card__check">
-                <i class="bi bi-check-circle-fill"></i>
-              </span>
             </div>
           </div>
           <h5 class="content-card__title">{{ item.title }}</h5>
@@ -282,22 +342,21 @@
           <div v-if="item.tags && item.tags.length" class="content-card__tags">
             <span v-for="tag in item.tags" :key="tag" class="tag-pill">{{ tag }}</span>
           </div>
-          <div v-if="hasResources(item)" class="content-card__resources">
-            <span v-for="part in activeVoicings(item)" :key="part" class="resource-badge resource-badge--audio">
-              <i class="bi bi-mic-fill"></i> {{ voicingLabel(part) }}
-            </span>
-            <span v-if="item.scoreUrl" class="resource-badge resource-badge--score">
-              <i class="bi bi-file-earmark-music-fill"></i> Score
-            </span>
-          </div>
           <div class="content-card__actions" @click.stop>
-            <div class="btn-group" v-if="isAdminUser">
-              <button @click="openEditModal(item)" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-pencil-square"></i> Edit
+            <div class="d-flex gap-1 flex-wrap">
+              <button @click="toggleSelect(item)" class="btn btn-sm"
+                :class="isSelected(item._id) ? 'btn-success' : 'btn-outline-secondary'">
+                <i :class="isSelected(item._id) ? 'bi bi-check-circle-fill' : 'bi bi-plus-circle'"></i>
+                {{ isSelected(item._id) ? 'Added' : 'Add to Builder' }}
               </button>
-              <button @click="deleteItem(item._id)" class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-trash"></i> Delete
-              </button>
+              <div class="btn-group" v-if="isAdminUser">
+                <button @click="openEditModal(item)" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+                <button @click="deleteItem(item._id)" class="btn btn-sm btn-outline-danger">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -333,47 +392,149 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════
-       TAB: UPLOAD (context-aware: song or chord)
-  ══════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════
+       TAB: DETAIL PAGE
+  ══════════════════════════════════════════════════════ -->
+  <div v-show="activeTab === 'detail'" class="container-fluid px-3 px-md-4 py-3">
+    <div v-if="detailItem">
+      <div class="detail-topbar">
+        <button class="btn btn-outline-secondary btn-sm" @click="goBackFromDetail()">
+          <i class="bi bi-arrow-left me-1"></i> Back
+        </button>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <button class="btn btn-sm"
+            :class="isSelected(detailItem._id) ? 'btn-success' : 'btn-primary-app'"
+            @click="toggleSelect(detailItem)">
+            <i :class="isSelected(detailItem._id) ? 'bi bi-check-circle-fill' : 'bi bi-plus-circle'" class="me-1"></i>
+            {{ isSelected(detailItem._id) ? 'Added to Builder' : 'Add to Builder' }}
+          </button>
+          <div class="btn-group" v-if="isAdminUser">
+            <button @click="openEditModal(detailItem)" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-pencil-square me-1"></i> Edit
+            </button>
+            <button @click="deleteItem(detailItem._id)" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-trash me-1"></i> Delete
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-card mt-3">
+        <div class="detail-card__header">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="content-card__category">{{ detailItem.category }}</span>
+            <span v-if="detailItem.contentType === 'chord'" class="chord-type-badge">
+              <i class="bi bi-music-note-beamed"></i> Chords
+            </span>
+          </div>
+          <h1 class="detail-card__title">{{ detailItem.title }}</h1>
+          <div class="detail-card__meta">
+            <span><i class="bi bi-person-fill me-1"></i>{{ detailItem.author }}</span>
+            <span><i class="bi bi-calendar3 me-1"></i>{{ formatDate(detailItem.createdAt) }}</span>
+          </div>
+          <div v-if="detailItem.tags && detailItem.tags.length" class="content-card__tags mt-2">
+            <span v-for="tag in detailItem.tags" :key="tag" class="tag-pill">{{ tag }}</span>
+          </div>
+        </div>
+        <hr class="detail-card__divider" />
+        <div class="detail-card__body"
+          :class="{ 'detail-card__body--chord': detailItem.contentType === 'chord' }">{{ detailItem.body }}</div>
+        <template v-if="hasResources(detailItem)">
+          <hr class="detail-card__divider" />
+          <div class="detail-card__resources">
+            <div class="detail-resources__title"><i class="bi bi-headphones me-1"></i> Resources</div>
+            <div v-if="activeSingers(detailItem).length" class="detail-resources__group">
+              <div class="detail-resources__group-label"><i class="bi bi-mic-fill me-1"></i> Singers</div>
+              <div class="detail-resources__links">
+                <a v-for="part in activeSingers(detailItem)" :key="part"
+                  :href="detailItem.voicings[part]" target="_blank" rel="noopener"
+                  class="detail-resource-link detail-resource-link--audio">
+                  <i class="bi bi-play-circle-fill me-1"></i> {{ voicingLabel(part) }}
+                </a>
+              </div>
+            </div>
+            <div v-if="activeInstruments(detailItem).length" class="detail-resources__group">
+              <div class="detail-resources__group-label"><i class="bi bi-guitar me-1"></i> Instruments</div>
+              <div class="detail-resources__links">
+                <a v-for="part in activeInstruments(detailItem)" :key="part"
+                  :href="detailItem.voicings[part]" target="_blank" rel="noopener"
+                  class="detail-resource-link detail-resource-link--audio">
+                  <i class="bi bi-play-circle-fill me-1"></i> {{ voicingLabel(part) }}
+                </a>
+              </div>
+            </div>
+            <div v-if="detailItem.scoreUrl" class="detail-resources__group">
+              <div class="detail-resources__group-label"><i class="bi bi-file-earmark-music-fill me-1"></i> Music Score</div>
+              <div class="detail-resources__links">
+                <a :href="detailItem.scoreUrl" target="_blank" rel="noopener"
+                  class="detail-resource-link detail-resource-link--score">
+                  <i class="bi bi-file-earmark-pdf-fill me-1"></i> View Music Score
+                </a>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       TAB: GUITAR CHORD CHART
+  ══════════════════════════════════════════════════════ -->
+  <div v-show="activeTab === 'guitarchords'" class="container-fluid px-3 px-md-4 py-3">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Guitar Chord Chart</h2>
+        <p class="section-sub">Select a root note to see all chord variations with finger diagrams.</p>
+      </div>
+    </div>
+    <div class="chord-root-selector mb-4">
+      <button v-for="root in chordRoots" :key="root"
+        class="chord-root-btn" :class="{ 'chord-root-btn--active': selectedRoot === root }"
+        @click="selectedRoot = root">
+        {{ root }}
+      </button>
+    </div>
+    <div class="chord-diagrams-grid">
+      <div v-for="chord in activeChordDiagrams" :key="chord.label" class="chord-diagram-card">
+        <div class="chord-diagram-card__label">{{ chord.label }}</div>
+        <div class="chord-diagram-card__svg" v-html="chord.svg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       TAB: UPLOAD
+  ══════════════════════════════════════════════════════ -->
   <div v-show="activeTab === 'upload'" class="container-fluid px-3 px-md-4 py-3">
     <div class="section-header">
       <div>
-        <h2 class="section-title">
-          {{ form.contentType === 'chord' ? 'Upload Chords' : 'Upload Song' }}
-        </h2>
-        <p class="section-sub">
-          {{ form.contentType === 'chord' ? 'Add new chords for musicians.' : 'Add a new song for singers.' }}
-        </p>
+        <h2 class="section-title">{{ form.contentType === 'chord' ? 'Upload Chords' : 'Upload Song' }}</h2>
+        <p class="section-sub">{{ form.contentType === 'chord' ? 'Add new chords for musicians.' : 'Add a new song for singers.' }}</p>
       </div>
     </div>
 
     <div class="upload-card">
       <div class="mb-3">
-        <label class="form-label form-label-app">Title <span class="text-danger">*</span></label>
-        <input type="text" class="form-control form-control-app"
-          v-model="form.title"
-          :placeholder="form.contentType === 'chord' ? 'Enter song title' : 'Enter song title'"
-          maxlength="200" />
+        <label class="form-label-app">Title <span class="text-danger">*</span></label>
+        <input type="text" class="form-control-app" v-model="form.title" placeholder="Enter title" maxlength="200" />
       </div>
-
       <div class="row g-3 mb-3">
-        <div class="col-12 col-md-4">
-          <label class="form-label form-label-app">Author</label>
-          <input type="text" class="form-control form-control-app"
-            v-model="form.author" placeholder="Anonymous" />
+        <div class="col-12 col-sm-6 col-md-4">
+          <label class="form-label-app">Author</label>
+          <input type="text" class="form-control-app" v-model="form.author" placeholder="Anonymous" />
         </div>
-        <div class="col-12 col-md-4">
-          <label class="form-label form-label-app">Category</label>
-          <select class="form-select form-select-app" v-model="form.category" required>
+        <div class="col-12 col-sm-6 col-md-4">
+          <label class="form-label-app">Category</label>
+          <select class="form-select-app" v-model="form.category" required>
             <option value="" disabled selected>Select a category</option>
             <option value="Mass">Mass</option>
             <option value="Worship">Worship</option>
           </select>
         </div>
-        <div class="col-12 col-md-4">
-          <label class="form-label form-label-app">Content Type</label>
-          <select class="form-select form-select-app" v-model="form.fileType" required>
+        <div class="col-12 col-sm-6 col-md-4">
+          <label class="form-label-app">Content Type</label>
+          <select class="form-select-app" v-model="form.fileType" required>
             <option value="" disabled selected>Select content type</option>
             <option value="text">Plain Text</option>
             <option value="markdown">Markdown</option>
@@ -381,128 +542,103 @@
           </select>
         </div>
       </div>
-
       <div class="mb-3">
-        <label class="form-label form-label-app">Tags <small class="text-muted">(comma-separated)</small></label>
-        <input type="text" class="form-control form-control-app"
-          v-model="form.tags" placeholder="e.g. entrance, offertory, worship, mass, lyrics, chords..." />
+        <label class="form-label-app">Tags <small class="text-muted">(comma-separated)</small></label>
+        <input type="text" class="form-control-app" v-model="form.tags" placeholder="e.g. entrance, offertory, worship, mass..." />
       </div>
-
       <div class="mb-4">
-        <label class="form-label form-label-app">
+        <label class="form-label-app">
           {{ form.contentType === 'chord' ? 'Chords' : 'Body / Lyrics' }}
           <span class="text-danger">*</span>
         </label>
-        <textarea
-          class="form-control form-control-app"
-          :class="{ 'chord-textarea': form.contentType === 'chord' }"
-          v-model="form.body"
-          rows="12"
+        <textarea class="form-control-app" :class="{ 'chord-textarea': form.contentType === 'chord' }"
+          v-model="form.body" rows="12"
           :placeholder="form.contentType === 'chord'
             ? 'Paste chords here. Use spaces to align chords above lyrics:\n\nG           C\nAmazing grace how sweet the sound'
-            : 'Paste lyrics here'">
-        </textarea>
+            : 'Paste lyrics here'"></textarea>
+        <small v-if="form.contentType === 'chord'" class="text-muted mt-1 d-block">
+          <i class="bi bi-info-circle"></i> Courier New font preserves chord spacing.
+        </small>
       </div>
 
-      <!-- Resources Section -->
       <div class="resources-section">
-
-        <!-- Singers -->
-        <div class="resources-section__head">
-          <i class="bi bi-mic"></i> Singer Audio Links
-          <small class="text-muted ms-1">(optional — paste shareable links)</small>
-        </div>
+        <div class="resources-section__head"><i class="bi bi-mic"></i> Singer Audio Links <small class="text-muted ms-1">(optional)</small></div>
         <div class="row g-3 mb-3">
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-music-note-beamed"></i> Full Song</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.fullSong" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-music-note-beamed"></i> Full Song</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.fullSong" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-mic"></i> Soprano</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.soprano" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-mic"></i> Soprano</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.soprano" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-mic"></i> Alto</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.alto" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-mic"></i> Alto</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.alto" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-mic"></i> Tenor</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.tenor" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-mic"></i> Tenor</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.tenor" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-mic"></i> Bass</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.bass" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-mic"></i> Bass</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.bass" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-mic"></i> Baritone</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.baritone" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-mic"></i> Baritone</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.baritone" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-mic"></i> Solo</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.solo" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-mic"></i> Solo</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.solo" placeholder="https://..." />
           </div>
         </div>
-
-        <!-- Instruments -->
-        <div class="resources-section__head">
-          <i class="bi bi-guitar"></i> Instrument Audio Links
-          <small class="text-muted ms-1">(optional — paste shareable links)</small>
-        </div>
+        <div class="resources-section__head"><i class="bi bi-guitar"></i> Instrument Audio Links <small class="text-muted ms-1">(optional)</small></div>
         <div class="row g-3 mb-3">
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 1</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.electricGuitar1" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 1</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.electricGuitar1" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 2</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.electricGuitar2" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 2</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.electricGuitar2" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 3</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.electricGuitar3" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 3</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.electricGuitar3" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-guitar"></i> Acoustic Guitar 1</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.acousticGuitar1" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-guitar"></i> Acoustic Guitar 1</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.acousticGuitar1" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-guitar"></i> Acoustic Guitar 2</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.acousticGuitar2" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-guitar"></i> Acoustic Guitar 2</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.acousticGuitar2" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-music-note-beamed"></i> Violin</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.violin" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-music-note-beamed"></i> Violin</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.violin" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-music-note-beamed"></i> Viola</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.viola" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-music-note-beamed"></i> Viola</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.viola" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label form-label-app"><i class="bi bi-keyboard"></i> Keys</label>
-            <input type="url" class="form-control form-control-app" v-model="form.voicings.keys" placeholder="https://..." />
+            <label class="form-label-app"><i class="bi bi-keyboard"></i> Keys</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.keys" placeholder="https://..." />
           </div>
         </div>
-
-        <!-- Score -->
-        <div class="resources-section__head">
-          <i class="bi bi-file-earmark-music"></i> Music Score
-          <small class="text-muted ms-1">(optional)</small>
-        </div>
+        <div class="resources-section__head"><i class="bi bi-file-earmark-music"></i> Music Score <small class="text-muted ms-1">(optional)</small></div>
         <div class="mb-1">
-          <label class="form-label form-label-app">Score Link</label>
-          <input type="url" class="form-control form-control-app"
-            v-model="form.scoreUrl" placeholder="https://drive.google.com/..." />
+          <label class="form-label-app">Score Link</label>
+          <input type="url" class="form-control-app" v-model="form.scoreUrl" placeholder="https://drive.google.com/..." />
         </div>
       </div>
 
       <div class="d-flex flex-wrap gap-2 mt-3">
         <button class="btn btn-primary-app px-4" @click="uploadContent" :disabled="uploading">
-          <span v-if="uploading">
-            <span class="spinner-border spinner-border-sm me-2"></span>Saving…
-          </span>
-          <span v-else>
-            <i class="bi bi-cloud-upload me-2"></i>Save to Database
-          </span>
+          <span v-if="uploading"><span class="spinner-border spinner-border-sm me-2"></span>Saving…</span>
+          <span v-else><i class="bi bi-cloud-upload me-2"></i>Save to Database</span>
         </button>
         <button class="btn btn-outline-secondary" @click="resetForm">
           <i class="bi bi-arrow-counterclockwise"></i> Reset
@@ -511,9 +647,9 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════
        TAB: BUILDER
-  ══════════════════════════════════════════════════════════ -->
+  ══════════════════════════════════════════════════════ -->
   <div v-show="activeTab === 'builder'" class="container-fluid px-3 px-md-4 py-3">
     <div class="section-header">
       <div>
@@ -524,7 +660,10 @@
 
     <div v-if="selectedItems.length === 0" class="empty-state">
       <i class="bi bi-layers"></i>
-      <p>No items added yet. Select from <a href="#" @click.prevent="switchTab('library')">Lyric Library</a> or <a href="#" @click.prevent="switchTab('chords')">Chord Library</a>.</p>
+      <p>No items added yet. Select from
+        <a href="#" @click.prevent="switchTab('library')">Lyric Library</a> or
+        <a href="#" @click.prevent="switchTab('chords')">Chord Library</a>.
+      </p>
     </div>
 
     <div class="row g-4" v-else>
@@ -537,11 +676,8 @@
           <p class="builder-panel__hint">Drag rows or use arrows to reorder sections.</p>
           <div class="builder-list">
             <div v-for="(item, idx) in selectedItems" :key="item._id"
-              class="builder-row"
-              draggable="true"
-              @dragstart="dragStart(idx)"
-              @dragover.prevent="dragOver(idx)"
-              @dragend="dragEnd"
+              class="builder-row" draggable="true"
+              @dragstart="dragStart(idx)" @dragover.prevent="dragOver(idx)" @dragend="dragEnd"
               :class="{ 'builder-row--drag': dragIndex === idx }">
               <div class="builder-row__drag-handle"><i class="bi bi-grip-vertical"></i></div>
               <div class="builder-row__num">{{ idx + 1 }}</div>
@@ -553,16 +689,13 @@
                 </div>
               </div>
               <div class="builder-row__actions">
-                <button class="btn btn-icon" :disabled="idx === 0"
-                  @click="moveItem(idx, idx - 1)" title="Move up">
+                <button class="btn btn-icon" :disabled="idx === 0" @click="moveItem(idx, idx - 1)" title="Move up">
                   <i class="bi bi-arrow-up"></i>
                 </button>
-                <button class="btn btn-icon" :disabled="idx === selectedItems.length - 1"
-                  @click="moveItem(idx, idx + 1)" title="Move down">
+                <button class="btn btn-icon" :disabled="idx === selectedItems.length - 1" @click="moveItem(idx, idx + 1)" title="Move down">
                   <i class="bi bi-arrow-down"></i>
                 </button>
-                <button class="btn btn-icon btn-icon--danger"
-                  @click="removeFromBuilder(idx)" title="Remove">
+                <button class="btn btn-icon btn-icon--danger" @click="removeFromBuilder(idx)" title="Remove">
                   <i class="bi bi-x-lg"></i>
                 </button>
               </div>
@@ -577,125 +710,46 @@
             <h5><i class="bi bi-sliders me-2"></i>Export Settings</h5>
           </div>
           <div class="mb-3">
-            <label class="form-label form-label-app">Document Title</label>
-            <input type="text" class="form-control form-control-app"
-              v-model="pdfSettings.title" placeholder="TFC Mass [mm/dd/yyyy]" />
+            <label class="form-label-app">Document Title</label>
+            <input type="text" class="form-control-app" v-model="pdfSettings.title" placeholder="TFC Mass [mm/dd/yyyy]" />
           </div>
           <div class="mb-3">
-            <label class="form-label form-label-app">Lineup guide prepared by</label>
-            <input type="text" class="form-control form-control-app"
-              v-model="pdfSettings.author" placeholder="Name" />
+            <label class="form-label-app">Lineup guide prepared by</label>
+            <input type="text" class="form-control-app" v-model="pdfSettings.author" placeholder="Name" />
           </div>
           <div class="mb-3">
-            <label class="form-label form-label-app">Export Format</label>
+            <label class="form-label-app">Export Format</label>
             <div class="btn-group w-100" role="group">
               <input type="radio" class="btn-check" name="exportFormat" id="fmt-pdf" value="pdf" v-model="exportFormat" />
-              <label class="btn btn-outline-secondary" for="fmt-pdf">
-                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
-              </label>
+              <label class="btn btn-outline-secondary" for="fmt-pdf"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</label>
               <input type="radio" class="btn-check" name="exportFormat" id="fmt-docx" value="docx" v-model="exportFormat" />
-              <label class="btn btn-outline-secondary" for="fmt-docx">
-                <i class="bi bi-file-earmark-word me-1"></i> DOCX
-              </label>
+              <label class="btn btn-outline-secondary" for="fmt-docx"><i class="bi bi-file-earmark-word me-1"></i> DOCX</label>
               <input type="radio" class="btn-check" name="exportFormat" id="fmt-txt" value="txt" v-model="exportFormat" />
-              <label class="btn btn-outline-secondary" for="fmt-txt">
-                <i class="bi bi-file-earmark-text me-1"></i> TXT
-              </label>
+              <label class="btn btn-outline-secondary" for="fmt-txt"><i class="bi bi-file-earmark-text me-1"></i> TXT</label>
             </div>
           </div>
-          <div class="d-flex flex-column gap-2 mt-3">
-            <button @click="generateFile" :disabled="generating || !user"
-              class="btn w-100 fw-bold"
-              :class="!user ? 'btn-secondary text-muted opacity-75 custom-lock-cursor' : 'btn-primary'">
-              <span v-if="generating">
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                Generating...
-              </span>
-              <span v-else-if="!user">
-                <i class="bi bi-lock-fill me-1"></i> Log In to Export
-              </span>
-              <span v-else>
-                <i :class="exportFormat === 'pdf' ? 'bi bi-file-earmark-pdf-fill' : exportFormat === 'docx' ? 'bi bi-file-earmark-word-fill' : 'bi bi-file-earmark-text-fill'" class="me-1"></i>
-                Generate {{ exportFormat.toUpperCase() }}
-              </span>
-            </button>
-            <div v-if="!user" class="text-muted text-center small mt-1">
-              <i class="bi bi-info-circle"></i> You must be signed in to export files.
-            </div>
-          </div>
+          <button @click="generateFile" :disabled="generating" class="btn btn-primary w-100 fw-bold mt-3">
+            <span v-if="generating">
+              <span class="spinner-border spinner-border-sm me-1"></span> Generating...
+            </span>
+            <span v-else>
+              <i :class="exportFormat === 'pdf' ? 'bi bi-file-earmark-pdf-fill' : exportFormat === 'docx' ? 'bi bi-file-earmark-word-fill' : 'bi bi-file-earmark-text-fill'" class="me-1"></i>
+              Generate {{ exportFormat.toUpperCase() }}
+            </span>
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── Login Modal ────────────────────────────────────────── -->
-  <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Login</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <form @submit.prevent="login">
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Email</label>
-              <input type="email" class="form-control" v-model="loginForm.email" required />
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Password</label>
-              <input type="password" class="form-control" v-model="loginForm.password" required />
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Login</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Register Modal ─────────────────────────────────────── -->
-  <div class="modal fade" id="registerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Register</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <form @submit.prevent="register">
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Username</label>
-              <input type="text" class="form-control" v-model="registerForm.username" required />
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Email</label>
-              <input type="email" class="form-control" v-model="registerForm.email" required />
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Password</label>
-              <input type="password" class="form-control" v-model="registerForm.password" required />
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-success">Register</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Edit Modal ─────────────────────────────────────────── -->
+  <!-- ── Edit Modal ────────────────────────────────────── -->
   <div class="modal fade" id="editModal" data-bs-backdrop="static" tabindex="-1"
     aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="editModalLabel">
-            <i class="bi bi-pencil-square"></i>
+            <i class="bi bi-pencil-square me-2"></i>
             {{ editForm.contentType === 'chord' ? 'Edit Chords' : 'Edit Song Details' }}
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -719,111 +773,91 @@
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label fw-bold">
-                {{ editForm.contentType === 'chord' ? 'Chords' : 'Body / Lyrics' }}
-              </label>
-              <textarea class="form-control"
-                :class="{ 'chord-textarea': editForm.contentType === 'chord' }"
+              <label class="form-label fw-bold">{{ editForm.contentType === 'chord' ? 'Chords' : 'Body / Lyrics' }}</label>
+              <textarea class="form-control" :class="{ 'chord-textarea': editForm.contentType === 'chord' }"
                 rows="10" v-model="editForm.body" required></textarea>
             </div>
             <div class="mb-3">
               <label class="form-label fw-bold">Tags (comma-separated)</label>
               <input type="text" class="form-control" v-model="editForm.tags" />
             </div>
-
-            <!-- Resources -->
             <div class="resources-section">
-              <!-- Singers -->
-              <div class="resources-section__head">
-                <i class="bi bi-mic"></i> Singer Audio Links
-                <small class="text-muted ms-1">(optional)</small>
-              </div>
+              <div class="resources-section__head"><i class="bi bi-mic"></i> Singer Audio Links <small class="text-muted ms-1">(optional)</small></div>
               <div class="row g-3 mb-3">
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-music-note-beamed"></i> Full Song</label>
+                  <label class="form-label form-label-app">Full Song</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.fullSong" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-mic"></i> Soprano</label>
+                  <label class="form-label form-label-app">Soprano</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.soprano" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-mic"></i> Alto</label>
+                  <label class="form-label form-label-app">Alto</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.alto" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-mic"></i> Tenor</label>
+                  <label class="form-label form-label-app">Tenor</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.tenor" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-mic"></i> Bass</label>
+                  <label class="form-label form-label-app">Bass</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.bass" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-mic"></i> Baritone</label>
+                  <label class="form-label form-label-app">Baritone</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.baritone" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-mic"></i> Solo</label>
+                  <label class="form-label form-label-app">Solo</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.solo" placeholder="https://..." />
                 </div>
               </div>
-
-              <!-- Instruments -->
-              <div class="resources-section__head">
-                <i class="bi bi-guitar"></i> Instrument Audio Links
-                <small class="text-muted ms-1">(optional)</small>
-              </div>
+              <div class="resources-section__head"><i class="bi bi-guitar"></i> Instrument Audio Links <small class="text-muted ms-1">(optional)</small></div>
               <div class="row g-3 mb-3">
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 1</label>
+                  <label class="form-label form-label-app">Electric Guitar 1</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.electricGuitar1" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 2</label>
+                  <label class="form-label form-label-app">Electric Guitar 2</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.electricGuitar2" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 3</label>
+                  <label class="form-label form-label-app">Electric Guitar 3</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.electricGuitar3" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-guitar"></i> Acoustic Guitar 1</label>
+                  <label class="form-label form-label-app">Acoustic Guitar 1</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.acousticGuitar1" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-guitar"></i> Acoustic Guitar 2</label>
+                  <label class="form-label form-label-app">Acoustic Guitar 2</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.acousticGuitar2" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-music-note-beamed"></i> Violin</label>
+                  <label class="form-label form-label-app">Violin</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.violin" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-music-note-beamed"></i> Viola</label>
+                  <label class="form-label form-label-app">Viola</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.viola" placeholder="https://..." />
                 </div>
                 <div class="col-12 col-sm-6 col-md-4">
-                  <label class="form-label form-label-app"><i class="bi bi-keyboard"></i> Keys</label>
+                  <label class="form-label form-label-app">Keys</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.keys" placeholder="https://..." />
                 </div>
               </div>
-
-              <!-- Score -->
-              <div class="resources-section__head">
-                <i class="bi bi-file-earmark-music"></i> Music Score
-                <small class="text-muted ms-1">(optional)</small>
-              </div>
+              <div class="resources-section__head"><i class="bi bi-file-earmark-music"></i> Music Score <small class="text-muted ms-1">(optional)</small></div>
               <div class="mb-1">
                 <label class="form-label form-label-app">Score Link</label>
                 <input type="url" class="form-control" v-model="editForm.scoreUrl" placeholder="https://drive.google.com/..." />
               </div>
             </div>
-
             <div class="modal-footer px-0 pb-0">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
               <button type="submit" class="btn btn-primary" :disabled="updating">
-                <span v-if="updating" class="spinner-border spinner-border-sm" role="status"></span>
+                <span v-if="updating" class="spinner-border spinner-border-sm me-1"></span>
                 Save Changes
               </button>
             </div>
@@ -833,14 +867,12 @@
     </div>
   </div>
 
-  <!-- ── Create User Modal ──────────────────────────────────── -->
+  <!-- ── Create User Modal ─────────────────────────────── -->
   <div class="modal fade" id="createUserModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">
-            <i class="bi bi-person-plus-fill me-2"></i> Create Account
-          </h5>
+          <h5 class="modal-title"><i class="bi bi-person-plus-fill me-2"></i> Create Account</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <form @submit.prevent="createUser">
@@ -858,8 +890,7 @@
               <input type="password" class="form-control" v-model="adminCreateForm.password" required />
             </div>
             <div class="form-check">
-              <input class="form-check-input" type="checkbox"
-                id="isAdminCheckbox" v-model="adminCreateForm.isAdmin" />
+              <input class="form-check-input" type="checkbox" id="isAdminCheckbox" v-model="adminCreateForm.isAdmin" />
               <label class="form-check-label" for="isAdminCheckbox">Create as Administrator</label>
             </div>
           </div>
@@ -872,7 +903,7 @@
     </div>
   </div>
 
-  <!-- ── Footer ─────────────────────────────────────────────── -->
+  <!-- ── Footer ───────────────────────────────────────── -->
   <footer class="text-center py-2 mb-0 text-muted bg-light border-top mt-5">
     <div class="container-fluid">
       <p class="mb-1 small">&copy; 2026 LineUpMaker [Demo Version]. All Rights Reserved.</p>
@@ -882,6 +913,8 @@
       </p>
     </div>
   </footer>
+
+  </template><!-- /v-if="user" -->
 
 </div><!-- /#app -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
