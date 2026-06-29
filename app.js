@@ -1,15 +1,15 @@
 const { createApp } = Vue;
 
-//const API_BASE = "http://localhost:5000/api";
+const API_BASE = "http://localhost:5000/api";
 
-const API_BASE = "https://lineupmakerdemo-server.onrender.com/api";
+// const API_BASE = "https://lineupmakerdemo-server.onrender.com/api";
 
 // ── Voice / Instrument parts ────────────────────────────────
 const SINGER_PARTS = ["fullSong", "soprano", "alto", "tenor", "bass", "baritone", "solo"];
 const INSTRUMENT_PARTS = [
   "electricGuitar1", "electricGuitar2", "electricGuitar3",
   "acousticGuitar1", "acousticGuitar2",
-  "violin", "viola", "keys",
+  "violin", "viola", "keys", "bass2", "drums", "keys2", "others",
 ];
 const ALL_VOICE_PARTS = [...SINGER_PARTS, ...INSTRUMENT_PARTS];
 
@@ -19,6 +19,7 @@ const VOICE_LABELS = {
   electricGuitar1: "Electric Guitar 1", electricGuitar2: "Electric Guitar 2",
   electricGuitar3: "Electric Guitar 3", acousticGuitar1: "Acoustic Guitar 1",
   acousticGuitar2: "Acoustic Guitar 2", violin: "Violin", viola: "Viola", keys: "Keys",
+  bass2: "Bass", drums: "Drums", keys2: "Keys 2", others: "Others",
 };
 
 const EMPTY_VOICINGS = () => ({
@@ -26,6 +27,7 @@ const EMPTY_VOICINGS = () => ({
   electricGuitar1: "", electricGuitar2: "", electricGuitar3: "",
   acousticGuitar1: "", acousticGuitar2: "",
   violin: "", viola: "", keys: "",
+  bass2: "", drums: "", keys2: "", others: "",
 });
 
 // ── Guitar Chord Chart ──────────────────────────────────────
@@ -298,6 +300,14 @@ createApp({
       // ── Auth ──────────────────────────────────────────────
       user: null,
       loggingIn: false,
+      showGatePassword: false,
+      showCreatePassword: false,
+
+      // ── Autoscroll ────────────────────────────────────────
+      autoscroll: { active: false, speed: 2, rafId: null },
+
+      // ── Tab history (back button support) ─────────────────
+      tabHistory: [],
       loginForm: { email: "", password: "" },
       registerForm: { username: "", email: "", password: "", isAdmin: false },
       adminCreateForm: { username: "", email: "", password: "", isAdmin: false },
@@ -336,6 +346,20 @@ createApp({
 
   mounted() {
     this.checkAuth();
+    // Replace the initial history state
+    history.replaceState({ tab: "library" }, "", window.location.pathname);
+    // Intercept browser back button
+    window.addEventListener("popstate", (e) => {
+      const prev = this.tabHistory.pop();
+      if (prev) {
+        this.stopAutoscroll();
+        this.activeTab = prev;
+        history.pushState({ tab: prev }, "", window.location.pathname);
+      } else {
+        // Nothing in our history — push state back so we stay on the page
+        history.pushState({ tab: this.activeTab }, "", window.location.pathname);
+      }
+    });
   },
 
   methods: {
@@ -383,6 +407,7 @@ createApp({
           this.loginForm = { email: "", password: "" };
         } else { this.showAlert(data.message, "danger"); }
       } catch { this.showAlert("Login failed.", "danger"); }
+      finally { this.loggingIn = false; }
     },
 
     async register() {
@@ -421,7 +446,14 @@ createApp({
 
     // ── Navigation ──────────────────────────────────────────
     switchTab(tab) {
+      if (this.activeTab && this.activeTab !== tab) {
+        this.tabHistory.push(this.activeTab);
+        if (this.tabHistory.length > 20) this.tabHistory.shift();
+      }
+      this.stopAutoscroll();
       this.activeTab = tab;
+      // Push a dummy history state so the browser back button triggers popstate
+      history.pushState({ tab }, "", window.location.pathname);
       const navbar = document.getElementById("navbarNav");
       if (navbar && navbar.classList.contains("show")) {
         const bsc = bootstrap.Collapse.getInstance(navbar) || new bootstrap.Collapse(navbar, { toggle: false });
@@ -613,6 +645,10 @@ createApp({
           violin:          item.voicings?.violin          || "",
           viola:           item.voicings?.viola           || "",
           keys:            item.voicings?.keys            || "",
+          bass2:           item.voicings?.bass2           || "",
+          drums:           item.voicings?.drums           || "",
+          keys2:           item.voicings?.keys2           || "",
+          others:          item.voicings?.others          || "",
         },
         scoreUrl: item.scoreUrl || "",
       };
@@ -643,6 +679,8 @@ createApp({
             electricGuitar3: v.electricGuitar3.trim(), acousticGuitar1: v.acousticGuitar1.trim(),
             acousticGuitar2: v.acousticGuitar2.trim(), violin: v.violin.trim(),
             viola: v.viola.trim(), keys: v.keys.trim(),
+            bass2: v.bass2?.trim() || "", drums: v.drums?.trim() || "",
+            keys2: v.keys2?.trim() || "", others: v.others?.trim() || "",
           },
           scoreUrl: this.editForm.scoreUrl.trim(),
         };
@@ -694,6 +732,8 @@ createApp({
             electricGuitar3: v.electricGuitar3.trim(), acousticGuitar1: v.acousticGuitar1.trim(),
             acousticGuitar2: v.acousticGuitar2.trim(), violin: v.violin.trim(),
             viola: v.viola.trim(), keys: v.keys.trim(),
+            bass2: v.bass2?.trim() || "", drums: v.drums?.trim() || "",
+            keys2: v.keys2?.trim() || "", others: v.others?.trim() || "",
           },
           scoreUrl: this.form.scoreUrl.trim(),
         };
@@ -882,6 +922,35 @@ createApp({
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
       this.showAlert("TXT downloaded successfully!");
+    },
+
+    // ── Autoscroll ───────────────────────────────────────────
+    startAutoscroll() {
+      if (this.autoscroll.active) return;
+      this.autoscroll.active = true;
+      const scroll = () => {
+        if (!this.autoscroll.active) return;
+        window.scrollBy(0, this.autoscroll.speed * 0.5);
+        this.autoscroll.rafId = requestAnimationFrame(scroll);
+      };
+      this.autoscroll.rafId = requestAnimationFrame(scroll);
+    },
+
+    stopAutoscroll() {
+      this.autoscroll.active = false;
+      if (this.autoscroll.rafId) {
+        cancelAnimationFrame(this.autoscroll.rafId);
+        this.autoscroll.rafId = null;
+      }
+    },
+
+    toggleAutoscroll() {
+      if (this.autoscroll.active) this.stopAutoscroll();
+      else this.startAutoscroll();
+    },
+
+    scrollToTop() {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     },
 
     // ── Print Preview ─────────────────────────────────────────

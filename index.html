@@ -24,7 +24,7 @@
         <span>LineUp Maker</span>
         <span class="auth-gate__badge">[Demo]</span>
       </div>
-      <p class="auth-gate__sub">Sign in to access TFC's lyric and chord library.</p>
+      <p class="auth-gate__sub">Sign in to access your lyric and chord library.</p>
 
       <div v-if="alert.message" :class="`alert alert-${alert.type} py-2 mb-3`" role="alert" style="font-size:0.85rem;">
         <i :class="`bi ${alert.type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle'} me-1`"></i>
@@ -40,9 +40,16 @@
         </div>
         <div class="mb-4">
           <label class="form-label-app" for="gate-pass">Password</label>
-          <input id="gate-pass" type="password" class="form-control-app w-100"
-            v-model="loginForm.password" placeholder="••••••••"
-            required autocomplete="current-password" />
+          <div class="pw-wrap">
+            <input id="gate-pass" :type="showGatePassword ? 'text' : 'password'"
+              class="form-control-app w-100"
+              v-model="loginForm.password" placeholder="••••••••"
+              required autocomplete="current-password" />
+            <button type="button" class="pw-toggle" @click="showGatePassword = !showGatePassword"
+              :title="showGatePassword ? 'Hide password' : 'Show password'">
+              <i :class="showGatePassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+            </button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary-app w-100 py-2" :disabled="loggingIn">
           <span v-if="loggingIn" class="spinner-border spinner-border-sm me-2"></span>
@@ -51,7 +58,7 @@
         </button>
       </form>
 
-      <p class="auth-gate__footer">&copy; 2026 LineUp Maker [Demo]. Made for service.</p>
+      <p class="auth-gate__footer">&copy; 2026 LineUp Maker [Demo]. All rights reserved.</p>
     </div>
   </div>
 
@@ -331,6 +338,10 @@
           <div class="content-card__header">
             <span class="content-card__category">{{ item.category }}</span>
             <div class="d-flex align-items-center gap-2">
+              <span class="chord-type-badge"><i class="bi bi-music-note-beamed"></i> Chords</span>
+              <span v-if="isSelected(item._id)" class="content-card__check">
+                <i class="bi bi-check-circle-fill"></i>
+              </span>
             </div>
           </div>
           <h5 class="content-card__title">{{ item.title }}</h5>
@@ -437,6 +448,26 @@
           </div>
         </div>
         <hr class="detail-card__divider" />
+
+        <!-- Autoscroll control bar (chord items only) -->
+        <div v-if="detailItem.contentType === 'chord'" class="autoscroll-bar">
+          <button class="autoscroll-bar__btn" @click="toggleAutoscroll"
+            :class="{ 'autoscroll-bar__btn--active': autoscroll.active }">
+            <i :class="autoscroll.active ? 'bi bi-pause-fill' : 'bi bi-play-fill'"></i>
+            {{ autoscroll.active ? 'Pause Scroll' : 'Auto Scroll' }}
+          </button>
+          <div class="autoscroll-bar__speed">
+            <span class="autoscroll-bar__label">Speed</span>
+            <input type="range" class="autoscroll-bar__range"
+              v-model.number="autoscroll.speed" min="1" max="10" step="1" />
+            <span class="autoscroll-bar__val">{{ autoscroll.speed }}</span>
+          </div>
+          <button class="autoscroll-bar__top" @click="scrollToTop()"
+            title="Back to top">
+            <i class="bi bi-arrow-up-circle"></i>
+          </button>
+        </div>
+
         <div class="detail-card__body"
           :class="{ 'detail-card__body--chord': detailItem.contentType === 'chord' }">{{ detailItem.body }}</div>
         <template v-if="hasResources(detailItem)">
@@ -626,6 +657,22 @@
           <div class="col-12 col-sm-6 col-md-4">
             <label class="form-label-app"><i class="bi bi-keyboard"></i> Keys</label>
             <input type="url" class="form-control-app" v-model="form.voicings.keys" placeholder="https://..." />
+          </div>
+          <div class="col-12 col-sm-6 col-md-4">
+            <label class="form-label-app"><i class="bi bi-music-note-beamed"></i> Bass</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.bass2" placeholder="https://..." />
+          </div>
+          <div class="col-12 col-sm-6 col-md-4">
+            <label class="form-label-app"><i class="bi bi-music-note-beamed"></i> Drums</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.drums" placeholder="https://..." />
+          </div>
+          <div class="col-12 col-sm-6 col-md-4">
+            <label class="form-label-app"><i class="bi bi-keyboard"></i> Keys 2</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.keys2" placeholder="https://..." />
+          </div>
+          <div class="col-12 col-sm-6 col-md-4">
+            <label class="form-label-app"><i class="bi bi-three-dots"></i> Others</label>
+            <input type="url" class="form-control-app" v-model="form.voicings.others" placeholder="https://..." />
           </div>
         </div>
         <div class="resources-section__head"><i class="bi bi-file-earmark-music"></i> Music Score <small class="text-muted ms-1">(optional)</small></div>
@@ -847,6 +894,22 @@
                   <label class="form-label form-label-app">Keys</label>
                   <input type="url" class="form-control" v-model="editForm.voicings.keys" placeholder="https://..." />
                 </div>
+                <div class="col-12 col-sm-6 col-md-4">
+                  <label class="form-label form-label-app">Bass</label>
+                  <input type="url" class="form-control" v-model="editForm.voicings.bass2" placeholder="https://..." />
+                </div>
+                <div class="col-12 col-sm-6 col-md-4">
+                  <label class="form-label form-label-app">Drums</label>
+                  <input type="url" class="form-control" v-model="editForm.voicings.drums" placeholder="https://..." />
+                </div>
+                <div class="col-12 col-sm-6 col-md-4">
+                  <label class="form-label form-label-app">Keys 2</label>
+                  <input type="url" class="form-control" v-model="editForm.voicings.keys2" placeholder="https://..." />
+                </div>
+                <div class="col-12 col-sm-6 col-md-4">
+                  <label class="form-label form-label-app">Others</label>
+                  <input type="url" class="form-control" v-model="editForm.voicings.others" placeholder="https://..." />
+                </div>
               </div>
               <div class="resources-section__head"><i class="bi bi-file-earmark-music"></i> Music Score <small class="text-muted ms-1">(optional)</small></div>
               <div class="mb-1">
@@ -887,7 +950,14 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Password</label>
-              <input type="password" class="form-control" v-model="adminCreateForm.password" required />
+              <div class="pw-wrap">
+                <input :type="showCreatePassword ? 'text' : 'password'"
+                  class="form-control" v-model="adminCreateForm.password" required />
+                <button type="button" class="pw-toggle" @click="showCreatePassword = !showCreatePassword"
+                  :title="showCreatePassword ? 'Hide password' : 'Show password'">
+                  <i :class="showCreatePassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                </button>
+              </div>
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" id="isAdminCheckbox" v-model="adminCreateForm.isAdmin" />
