@@ -1,8 +1,8 @@
 const { createApp } = Vue;
 
-const API_BASE = "http://localhost:5000/api";
+// const API_BASE = "http://localhost:5000/api";
 
-// const API_BASE = "https://lineupmakerdemo-server.onrender.com/api";
+const API_BASE = "https://lineupmakerdemo-server.onrender.com/api";
 
 // ── Voice / Instrument parts ────────────────────────────────
 const SINGER_PARTS = ["fullSong", "soprano", "alto", "tenor", "bass", "baritone", "solo"];
@@ -304,7 +304,7 @@ createApp({
       showCreatePassword: false,
 
       // ── Autoscroll ────────────────────────────────────────
-      autoscroll: { active: false, speed: 2, rafId: null },
+      autoscroll: { active: false, speed: 1, rafId: null },
 
       // ── Tab history (back button support) ─────────────────
       tabHistory: [],
@@ -377,8 +377,9 @@ createApp({
         const data = await res.json();
         if (data.success) {
           this.user = data.user;
-          this.fetchContent();
-          this.fetchChords();
+          await this.$nextTick();
+          this.fetchContent(1);
+          this.fetchChords(1);
         } else { localStorage.removeItem("token"); this.user = null; }
       } catch (err) { console.error("Auth check failed:", err); }
     },
@@ -401,10 +402,10 @@ createApp({
         if (data.success) {
           localStorage.setItem("token", data.token);
           this.user = data.user;
-          const modalEl = document.getElementById("loginModal");
-          if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-          this.showAlert("Login successful.");
           this.loginForm = { email: "", password: "" };
+          await this.$nextTick();
+          this.fetchContent(1);
+          this.fetchChords(1);
         } else { this.showAlert(data.message, "danger"); }
       } catch { this.showAlert("Login failed.", "danger"); }
       finally { this.loggingIn = false; }
