@@ -123,6 +123,13 @@
             </a>
           </li>
 
+          <li class="nav-item">
+            <a class="nav-link" :class="{ active: activeTab === 'playlists' }"
+              href="#" @click.prevent="switchTab('playlists'); fetchPlaylists()">
+              <i class="bi bi-music-player"></i> Playlists
+            </a>
+          </li>
+
           <li class="nav-item dropdown" v-if="isAdminUser">
             <a class="nav-link dropdown-toggle" href="#" role="button"
               data-bs-toggle="dropdown" aria-expanded="false">
@@ -503,6 +510,22 @@
                 </a>
               </div>
             </div>
+            <div v-if="detailItem.attachmentUrl" class="detail-resources__group">
+              <div class="detail-resources__group-label">
+                <i :class="detailItem.attachmentType === 'pdf' ? 'bi bi-file-earmark-pdf-fill' : 'bi bi-file-earmark-image-fill'" class="me-1"></i>
+                Chord Sheet {{ detailItem.attachmentType === 'pdf' ? '(PDF)' : '(Photo)' }}
+              </div>
+              <div v-if="detailItem.attachmentType === 'image'" class="mb-2">
+                <img :src="detailItem.attachmentUrl" :alt="detailItem.attachmentName || 'Chord sheet'" class="detail-attachment-img" />
+              </div>
+              <div class="detail-resources__links">
+                <a :href="detailItem.attachmentUrl" target="_blank" rel="noopener"
+                  class="detail-resource-link detail-resource-link--score">
+                  <i class="bi bi-box-arrow-up-right me-1"></i>
+                  {{ detailItem.attachmentType === 'pdf' ? 'View PDF' : 'View Full Photo' }}
+                </a>
+              </div>
+            </div>
           </div>
         </template>
       </div>
@@ -680,6 +703,26 @@
           <label class="form-label-app">Score Link</label>
           <input type="url" class="form-control-app" v-model="form.scoreUrl" placeholder="https://drive.google.com/..." />
         </div>
+
+        <!-- Chord sheet photo / PDF upload (chords only) -->
+        <template v-if="form.contentType === 'chord'">
+          <div class="resources-section__head"><i class="bi bi-camera"></i> Chord Sheet Photo / PDF <small class="text-muted ms-1">(optional)</small></div>
+          <div class="mb-1">
+            <label class="form-label-app">Upload a scanned chord sheet</label>
+            <input type="file" class="form-control-app" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+              @change="onAttachmentSelected" />
+            <small class="text-muted mt-1 d-block">
+              <i class="bi bi-info-circle"></i> JPG, PNG, WEBP, GIF, or PDF — max 8MB. Stored directly in the database.
+            </small>
+
+            <div v-if="form.attachmentName" class="attachment-preview mt-2">
+              <i :class="form.attachmentType === 'pdf' ? 'bi bi-file-earmark-pdf-fill' : 'bi bi-file-earmark-image-fill'"></i>
+              <span class="attachment-preview__name">{{ form.attachmentName }}</span>
+              <span v-if="uploadingAttachment" class="spinner-border spinner-border-sm ms-2"></span>
+              <button type="button" class="btn-close ms-auto" @click="removeAttachment" title="Remove"></button>
+            </div>
+          </div>
+        </template>
       </div>
 
       <div class="d-flex flex-wrap gap-2 mt-3">
@@ -784,6 +827,151 @@
               Generate {{ exportFormat.toUpperCase() }}
             </span>
           </button>
+        </div>
+
+        <div class="builder-panel mt-4">
+          <div class="builder-panel__head">
+            <h5><i class="bi bi-music-player-fill me-2"></i>Save as Playlist</h5>
+          </div>
+          <p class="builder-panel__hint">Save this lineup and share a link — anyone signed in can open it and play through it song by song.</p>
+          <div class="mb-3">
+            <label class="form-label-app">Playlist Name</label>
+            <input type="text" class="form-control-app" v-model="newPlaylistTitle" placeholder="e.g. Sunday 8am Mass" />
+          </div>
+          <button @click="savePlaylistFromBuilder" :disabled="savingPlaylist" class="btn btn-outline-secondary w-100 fw-bold">
+            <span v-if="savingPlaylist"><span class="spinner-border spinner-border-sm me-1"></span> Saving...</span>
+            <span v-else><i class="bi bi-share-fill me-1"></i> Save &amp; Get Share Link</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       TAB: PLAYLISTS
+  ══════════════════════════════════════════════════════ -->
+  <div v-show="activeTab === 'playlists'" class="container-fluid px-3 px-md-4 py-3">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">My Playlists</h2>
+        <p class="section-sub">Lineups you've saved. Share a link, or open one to play through it.</p>
+      </div>
+    </div>
+
+    <div v-if="playlistsLoading" class="loading-wrap">
+      <span class="spinner-border spinner-border-sm"></span>
+      <span>Loading playlists…</span>
+    </div>
+    <div v-else-if="playlists.length === 0" class="empty-state">
+      <i class="bi bi-music-player"></i>
+      <p>No playlists yet. Build a lineup in the
+        <a href="#" @click.prevent="switchTab('builder')">Builder</a> and save it as a playlist.
+      </p>
+    </div>
+    <div v-else class="row g-3">
+      <div v-for="pl in playlists" :key="pl._id" class="col-12 col-sm-6 col-lg-4">
+        <div class="content-card">
+          <div class="content-card__title">{{ pl.title }}</div>
+          <div class="content-card__body">{{ pl.items.length }} item{{ pl.items.length === 1 ? '' : 's' }}</div>
+          <div class="content-card__actions mt-2 d-flex gap-2 flex-wrap">
+            <button class="btn btn-sm btn-primary-app" @click="openPlaylist(pl)">
+              <i class="bi bi-play-fill"></i> Open
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" @click="openShareLink(pl)">
+              <i class="bi bi-share"></i> Share
+            </button>
+            <button class="btn btn-sm btn-outline-danger" @click="deletePlaylist(pl._id)">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       TAB: PLAYLIST PLAYER
+  ══════════════════════════════════════════════════════ -->
+  <div v-show="activeTab === 'player'" class="container-fluid px-3 px-md-4 py-3">
+    <div v-if="playerLoading" class="loading-wrap">
+      <span class="spinner-border spinner-border-sm"></span>
+      <span>Loading playlist…</span>
+    </div>
+
+    <div v-else-if="currentPlaylist && currentPlayerItem">
+      <div class="detail-topbar">
+        <button class="btn btn-outline-secondary btn-sm" @click="closePlayer">
+          <i class="bi bi-arrow-left me-1"></i> Close
+        </button>
+        <div class="player-progress">
+          {{ playerIndex + 1 }} / {{ currentPlaylist.items.length }}
+        </div>
+      </div>
+
+      <div class="detail-card mt-3 player-swipe-area"
+        @touchstart="onPlayerTouchStart" @touchend="onPlayerTouchEnd">
+        <div class="detail-card__header">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="content-card__category">{{ currentPlaylist.title }}</span>
+            <span v-if="currentPlayerItem.contentType === 'chord'" class="chord-type-badge">
+              <i class="bi bi-music-note-beamed"></i> Chords
+            </span>
+          </div>
+          <h1 class="detail-card__title">{{ currentPlayerItem.title }}</h1>
+          <div class="detail-card__meta">
+            <span><i class="bi bi-person-fill me-1"></i>{{ currentPlayerItem.author }}</span>
+          </div>
+        </div>
+        <hr class="detail-card__divider" />
+
+        <!-- Autoscroll control bar — chord items only -->
+        <div v-if="currentPlayerItem.contentType === 'chord'" class="autoscroll-bar">
+          <button class="autoscroll-bar__btn" @click="toggleAutoscroll"
+            :class="{ 'autoscroll-bar__btn--active': autoscroll.active }">
+            <i :class="autoscroll.active ? 'bi bi-pause-fill' : 'bi bi-play-fill'"></i>
+            {{ autoscroll.active ? 'Pause Scroll' : 'Auto Scroll' }}
+          </button>
+          <div class="autoscroll-bar__speed">
+            <span class="autoscroll-bar__label">Speed</span>
+            <input type="range" class="autoscroll-bar__range"
+              v-model.number="autoscroll.speed" min="0.25" max="10" step="0.25" />
+            <span class="autoscroll-bar__val">{{ autoscroll.speed }}x</span>
+          </div>
+          <button class="autoscroll-bar__top" @click="scrollToTop()" title="Back to top">
+            <i class="bi bi-arrow-up-circle"></i>
+          </button>
+        </div>
+
+        <div class="detail-card__body"
+          :class="{ 'detail-card__body--chord': currentPlayerItem.contentType === 'chord' }">{{ currentPlayerItem.body }}</div>
+      </div>
+
+      <div class="player-nav">
+        <button class="btn btn-outline-secondary" :disabled="playerIndex === 0" @click="prevSong">
+          <i class="bi bi-chevron-left"></i> Previous
+        </button>
+        <span class="player-nav__hint d-none d-md-inline"><i class="bi bi-arrow-left-right me-1"></i>Swipe to change songs</span>
+        <button class="btn btn-outline-secondary" :disabled="playerIndex === currentPlaylist.items.length - 1" @click="nextSong">
+          Next <i class="bi bi-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Share Link Modal ──────────────────────────────── -->
+  <div class="modal fade" id="shareLinkModal" tabindex="-1" aria-labelledby="shareLinkModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="shareLinkModalLabel"><i class="bi bi-share-fill me-2"></i>Share This Playlist</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-2">Anyone with this link will need to sign in to open it.</p>
+          <div class="input-group">
+            <input type="text" class="form-control-app" readonly :value="shareLinkUrl" />
+            <button class="btn btn-primary-app" @click="copyShareLink"><i class="bi bi-clipboard"></i> Copy</button>
+          </div>
         </div>
       </div>
     </div>

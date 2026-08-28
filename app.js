@@ -288,8 +288,13 @@ createApp({
         contentType: "song",
         voicings: EMPTY_VOICINGS(),
         scoreUrl: "",
+        attachmentFile: null,   // File object staged for upload (not yet sent)
+        attachmentUrl: "",      // URL once uploaded (or already-saved value)
+        attachmentName: "",
+        attachmentType: "",     // "image" | "pdf" | ""
       },
       uploading: false,
+      uploadingAttachment: false,
 
       // ── Export / Builder settings ─────────────────────────
       pdfSettings: { title: "", author: "", includeMetadata: true },
@@ -305,6 +310,21 @@ createApp({
 
       // ── Autoscroll ────────────────────────────────────────
       autoscroll: { active: false, speed: 1, rafId: null },
+
+      // ── Playlists ─────────────────────────────────────────
+      playlists: [],
+      playlistsLoading: false,
+      newPlaylistTitle: "",
+      savingPlaylist: false,
+      shareLinkUrl: "",
+
+      // ── Playlist Player ───────────────────────────────────
+      currentPlaylist: null,
+      playerIndex: 0,
+      playerLoading: false,
+      pendingShareId: null,
+      swipeStartX: 0,
+      swipeStartY: 0,
 
       // ── Tab history (back button support) ─────────────────
       tabHistory: [],
@@ -327,6 +347,11 @@ createApp({
     isAdminUser() {
       return this.user && this.user.isAdmin === true;
     },
+    // The song/chord currently shown in the playlist player
+    currentPlayerItem() {
+      if (!this.currentPlaylist || !this.currentPlaylist.items || !this.currentPlaylist.items.length) return null;
+      return this.currentPlaylist.items[this.playerIndex] || null;
+    },
     // Pre-rendered chord diagrams for the selected root
     activeChordDiagrams() {
       return (CHORD_DB[this.selectedRoot] || []).map(chord => ({
@@ -345,7 +370,19 @@ createApp({
   },
 
   mounted() {
-    this.checkAuth();
+    // Capture a shared playlist link (?playlist=shareId) BEFORE the
+    // history.replaceState below strips the query string from the URL bar.
+    const sharedId = new URLSearchParams(window.location.search).get("playlist");
+    if (sharedId) this.pendingShareId = sharedId;
+
+    this.checkAuth().then(() => {
+      if (this.user && this.pendingShareId) {
+        const id = this.pendingShareId;
+        this.pendingShareId = null;
+        this.loadPlaylistByShareId(id);
+      }
+    });
+
     // Replace the initial history state
     history.replaceState({ tab: "library" }, "", window.location.pathname);
     // Intercept browser back button
@@ -406,6 +443,11 @@ createApp({
           await this.$nextTick();
           this.fetchContent(1);
           this.fetchChords(1);
+          if (this.pendingShareId) {
+            const id = this.pendingShareId;
+            this.pendingShareId = null;
+            this.loadPlaylistByShareId(id);
+          }
         } else { this.showAlert(data.message, "danger"); }
       } catch { this.showAlert("Login failed.", "danger"); }
       finally { this.loggingIn = false; }
@@ -708,6 +750,66 @@ createApp({
       } finally { this.updating = false; }
     },
 
+    // ── Chord sheet attachment (photo / PDF) ──────────────────
+    onAttachmentSelected(e) {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = ""; // allow re-selecting the same file later
+      if (!file) return;
+
+      const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
+      if (!ALLOWED.includes(file.type)) {
+        this.showAlert("Only JPG, PNG, WEBP, GIF images or PDF files are allowed.", "danger");
+        return;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        this.showAlert("File is too large. Max size is 8MB.", "danger");
+        return;
+      }
+
+      // Stage the file locally; it's only uploaded when the form is saved.
+      this.form.attachmentFile = file;
+      this.form.attachmentName = file.name;
+      this.form.attachmentType = file.type === "application/pdf" ? "pdf" : "image";
+      this.form.attachmentUrl = ""; // cleared until actually uploaded
+    },
+
+    removeAttachment() {
+      this.form.attachmentFile = null;
+      this.form.attachmentUrl  = "";
+      this.form.attachmentName = "";
+      this.form.attachmentType = "";
+    },
+
+    // Uploads the staged file (if any) and returns { attachmentUrl, attachmentName, attachmentType }
+    async uploadStagedAttachment() {
+      if (!this.form.attachmentFile) {
+        return {
+          attachmentUrl:  this.form.attachmentUrl  || "",
+          attachmentName: this.form.attachmentName || "",
+          attachmentType: this.form.attachmentType || "",
+        };
+      }
+      this.uploadingAttachment = true;
+      try {
+        const fd = new FormData();
+        fd.append("file", this.form.attachmentFile);
+        const res = await fetch(`${API_BASE}/content/upload`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${this.getToken()}` },
+          body: fd,
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || "Attachment upload failed.");
+        return {
+          attachmentUrl:  data.attachmentUrl,
+          attachmentName: data.attachmentName,
+          attachmentType: data.attachmentType,
+        };
+      } finally {
+        this.uploadingAttachment = false;
+      }
+    },
+
     // ── Upload ───────────────────────────────────────────────
     async uploadContent() {
       if (!this.form.title.trim() || !this.form.body.trim() || !this.form.category || !this.form.fileType) {
@@ -716,6 +818,7 @@ createApp({
       }
       this.uploading = true;
       try {
+        const attachment = await this.uploadStagedAttachment();
         const v = this.form.voicings;
         const payload = {
           title:       this.form.title.trim(),
@@ -737,6 +840,9 @@ createApp({
             keys2: v.keys2?.trim() || "", others: v.others?.trim() || "",
           },
           scoreUrl: this.form.scoreUrl.trim(),
+          attachmentUrl:  attachment.attachmentUrl,
+          attachmentName: attachment.attachmentName,
+          attachmentType: attachment.attachmentType,
         };
         const res = await fetch(`${API_BASE}/content`, {
           method: "POST",
@@ -752,7 +858,7 @@ createApp({
           if (wasChord) this.fetchChords(1);
           else this.fetchContent(1);
         } else { this.showAlert(data.message || "Failed to save.", "danger"); }
-      } catch { this.showAlert("Upload failed. Check server connection.", "danger"); }
+      } catch (err) { this.showAlert(err.message || "Upload failed. Check server connection.", "danger"); }
       finally  { this.uploading = false; }
     },
 
@@ -762,6 +868,10 @@ createApp({
         contentType: "song",
         voicings: EMPTY_VOICINGS(),
         scoreUrl: "",
+        attachmentFile: null,
+        attachmentUrl: "",
+        attachmentName: "",
+        attachmentType: "",
       };
     },
 
@@ -952,6 +1062,153 @@ createApp({
 
     scrollToTop() {
       window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+
+    // ── Playlists ──────────────────────────────────────────────
+    async fetchPlaylists() {
+      this.playlistsLoading = true;
+      try {
+        const res = await fetch(`${API_BASE}/playlists/mine`, {
+          headers: { Authorization: `Bearer ${this.getToken()}` },
+        });
+        const data = await res.json();
+        if (data.success) this.playlists = data.data;
+        else this.showAlert(data.message || "Failed to load playlists.", "danger");
+      } catch { this.showAlert("Failed to connect to the server.", "danger"); }
+      finally { this.playlistsLoading = false; }
+    },
+
+    async savePlaylistFromBuilder() {
+      if (!this.newPlaylistTitle.trim()) {
+        this.showAlert("Give your playlist a name first.", "danger");
+        return;
+      }
+      if (!this.selectedItems.length) {
+        this.showAlert("Add some songs or chords to the builder first.", "danger");
+        return;
+      }
+      this.savingPlaylist = true;
+      try {
+        const res = await fetch(`${API_BASE}/playlists`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.getToken()}` },
+          body: JSON.stringify({
+            title: this.newPlaylistTitle.trim(),
+            items: this.selectedItems.map(i => i._id),
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.newPlaylistTitle = "";
+          this.showAlert("Playlist saved!");
+          this.openShareLink(data.data);
+          this.fetchPlaylists();
+        } else { this.showAlert(data.message || "Failed to save playlist.", "danger"); }
+      } catch { this.showAlert("Failed to connect to the server.", "danger"); }
+      finally { this.savingPlaylist = false; }
+    },
+
+    buildShareLink(shareId) {
+      return `${window.location.origin}${window.location.pathname}?playlist=${shareId}`;
+    },
+
+    openShareLink(playlist) {
+      this.shareLinkUrl = this.buildShareLink(playlist.shareId);
+      const modalEl = document.getElementById("shareLinkModal");
+      if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    },
+
+    copyShareLink() {
+      navigator.clipboard.writeText(this.shareLinkUrl)
+        .then(() => this.showAlert("Link copied to clipboard!"))
+        .catch(() => this.showAlert("Couldn't copy automatically — copy the link manually.", "danger"));
+    },
+
+    async deletePlaylist(id) {
+      if (!confirm("Delete this playlist? This cannot be undone.")) return;
+      try {
+        const res = await fetch(`${API_BASE}/playlists/${id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${this.getToken()}` },
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.playlists = this.playlists.filter(p => p._id !== id);
+          this.showAlert("Playlist deleted.");
+        } else { this.showAlert(data.message || "Failed to delete playlist.", "danger"); }
+      } catch { this.showAlert("Failed to connect to the server.", "danger"); }
+    },
+
+    // ── Playlist Player ──────────────────────────────────────────
+    // Fetches a playlist by its share link (requires a logged-in user —
+    // enforced server-side by the `auth` middleware on this route).
+    async loadPlaylistByShareId(shareId) {
+      this.playerLoading = true;
+      try {
+        const res = await fetch(`${API_BASE}/playlists/${shareId}`, {
+          headers: { Authorization: `Bearer ${this.getToken()}` },
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.currentPlaylist = data.data;
+          this.playerIndex = 0;
+          this.stopAutoscroll();
+          this.switchTab("player");
+        } else {
+          this.showAlert(data.message || "That playlist link isn't valid.", "danger");
+        }
+      } catch { this.showAlert("Failed to connect to the server.", "danger"); }
+      finally { this.playerLoading = false; }
+    },
+
+    openPlaylist(playlist) {
+      // Opening from "My Playlists" — we already have the full data.
+      this.currentPlaylist = playlist;
+      this.playerIndex = 0;
+      this.stopAutoscroll();
+      this.switchTab("player");
+    },
+
+    closePlayer() {
+      this.stopAutoscroll();
+      this.currentPlaylist = null;
+      this.switchTab("playlists");
+      this.fetchPlaylists();
+    },
+
+    // Autoscroll is per-song: moving to a new song always stops any
+    // active scroll and resets to the top, so it never carries over
+    // onto the next chord chart unexpectedly.
+    nextSong() {
+      if (!this.currentPlaylist || this.playerIndex >= this.currentPlaylist.items.length - 1) return;
+      this.stopAutoscroll();
+      this.playerIndex++;
+      this.scrollToTop();
+    },
+
+    prevSong() {
+      if (!this.currentPlaylist || this.playerIndex <= 0) return;
+      this.stopAutoscroll();
+      this.playerIndex--;
+      this.scrollToTop();
+    },
+
+    // ── Swipe navigation (playlist player, chords & lyrics alike) ──
+    onPlayerTouchStart(e) {
+      const t = e.changedTouches[0];
+      this.swipeStartX = t.clientX;
+      this.swipeStartY = t.clientY;
+    },
+
+    onPlayerTouchEnd(e) {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - this.swipeStartX;
+      const dy = t.clientY - this.swipeStartY;
+      const SWIPE_THRESHOLD = 60;
+      // Ignore small or mostly-vertical drags so normal page scrolling isn't hijacked.
+      if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
+      if (dx < 0) this.prevSong();  // swiped left  → previous song
+      else this.nextSong();         // swiped right → next song
     },
 
     // ── Print Preview ─────────────────────────────────────────
