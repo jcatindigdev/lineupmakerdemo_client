@@ -703,7 +703,7 @@ createApp({
     },
 
     hasResources(item) {
-      return this.activeVoicings(item).length > 0 || !!(item?.scoreUrl);
+      return this.activeVoicings(item).length > 0 || !!(item?.scoreUrl) || !!(item?.attachmentUrl);
     },
 
     voicingLabel(part) {

@@ -970,6 +970,57 @@
         <div v-if="currentPlayerItem.contentType === 'chord'" class="detail-card__body detail-card__body--chord"
           v-html="playerBodyHtml"></div>
         <div v-else class="detail-card__body">{{ currentPlayerItem.body }}</div>
+        <template v-if="hasResources(currentPlayerItem)">
+          <hr class="detail-card__divider" />
+          <div class="detail-card__resources">
+            <div class="detail-resources__title"><i class="bi bi-headphones me-1"></i> Resources</div>
+            <div v-if="activeSingers(currentPlayerItem).length" class="detail-resources__group">
+              <div class="detail-resources__group-label"><i class="bi bi-mic-fill me-1"></i> Singers</div>
+              <div class="detail-resources__links">
+                <a v-for="part in activeSingers(currentPlayerItem)" :key="part"
+                  :href="currentPlayerItem.voicings[part]" target="_blank" rel="noopener"
+                  class="detail-resource-link detail-resource-link--audio">
+                  <i class="bi bi-play-circle-fill me-1"></i> {{ voicingLabel(part) }}
+                </a>
+              </div>
+            </div>
+            <div v-if="activeInstruments(currentPlayerItem).length" class="detail-resources__group">
+              <div class="detail-resources__group-label"><i class="bi bi-guitar me-1"></i> Instruments</div>
+              <div class="detail-resources__links">
+                <a v-for="part in activeInstruments(currentPlayerItem)" :key="part"
+                  :href="currentPlayerItem.voicings[part]" target="_blank" rel="noopener"
+                  class="detail-resource-link detail-resource-link--audio">
+                  <i class="bi bi-play-circle-fill me-1"></i> {{ voicingLabel(part) }}
+                </a>
+              </div>
+            </div>
+            <div v-if="currentPlayerItem.scoreUrl" class="detail-resources__group">
+              <div class="detail-resources__group-label"><i class="bi bi-file-earmark-music-fill me-1"></i> Music Score</div>
+              <div class="detail-resources__links">
+                <a :href="currentPlayerItem.scoreUrl" target="_blank" rel="noopener"
+                  class="detail-resource-link detail-resource-link--score">
+                  <i class="bi bi-file-earmark-pdf-fill me-1"></i> View Music Score
+                </a>
+              </div>
+            </div>
+            <div v-if="currentPlayerItem.attachmentUrl" class="detail-resources__group">
+              <div class="detail-resources__group-label">
+                <i :class="currentPlayerItem.attachmentType === 'pdf' ? 'bi bi-file-earmark-pdf-fill' : 'bi bi-file-earmark-image-fill'" class="me-1"></i>
+                Chord Sheet {{ currentPlayerItem.attachmentType === 'pdf' ? '(PDF)' : '(Photo)' }}
+              </div>
+              <div v-if="currentPlayerItem.attachmentType === 'image'" class="mb-2">
+                <img :src="currentPlayerItem.attachmentUrl" :alt="currentPlayerItem.attachmentName || 'Chord sheet'" class="detail-attachment-img" />
+              </div>
+              <div class="detail-resources__links">
+                <a :href="currentPlayerItem.attachmentUrl" target="_blank" rel="noopener"
+                  class="detail-resource-link detail-resource-link--score">
+                  <i class="bi bi-box-arrow-up-right me-1"></i>
+                  {{ currentPlayerItem.attachmentType === 'pdf' ? 'View PDF' : 'View Full Photo' }}
+                </a>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
 
       <div class="player-nav">
