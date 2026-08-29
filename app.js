@@ -337,9 +337,17 @@ createApp({
 
       // ── Tab history (back button support) ─────────────────
       tabHistory: [],
-      loginForm: { email: "", password: "" },
+      loginForm: { identifier: "", password: "" },
       registerForm: { username: "", email: "", password: "", isAdmin: false },
       adminCreateForm: { username: "", email: "", password: "", isAdmin: false },
+
+      // ── Profile ─────────────────────────────────────────────
+      profileForm: { username: "", email: "" },
+      savingProfile: false,
+      passwordForm: { currentPassword: "", newPassword: "", confirmNewPassword: "" },
+      changingPassword: false,
+      showCurrentPassword: false,
+      showNewPassword: false,
 
       // ── Edit modal ────────────────────────────────────────
       editForm: {
@@ -463,7 +471,7 @@ createApp({
         if (data.success) {
           localStorage.setItem("token", data.token);
           this.user = data.user;
-          this.loginForm = { email: "", password: "" };
+          this.loginForm = { identifier: "", password: "" };
           await this.$nextTick();
           this.fetchContent(1);
           this.fetchChords(1);
@@ -495,6 +503,11 @@ createApp({
     },
 
     async createUser() {
+      const { username, email, password } = this.adminCreateForm;
+      if (!password || (!username.trim() && !email.trim())) {
+        this.showAlert("Password is required, along with a username and/or an email.", "danger");
+        return;
+      }
       try {
         const res = await fetch(`${API_BASE}/auth/admin/create-user`, {
           method: "POST",
@@ -509,6 +522,70 @@ createApp({
           if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
         } else { this.showAlert(data.message, "danger"); }
       } catch (error) { console.error(error); this.showAlert("Failed to create user.", "danger"); }
+    },
+
+    // ── Profile ────────────────────────────────────────────
+    openProfile() {
+      this.profileForm = {
+        username: this.user.username || "",
+        email: this.user.email || "",
+      };
+      this.passwordForm = { currentPassword: "", newPassword: "", confirmNewPassword: "" };
+      this.switchTab("profile");
+    },
+
+    async updateProfile() {
+      const username = this.profileForm.username.trim();
+      const email = this.profileForm.email.trim();
+      if (!username && !email) {
+        this.showAlert("Enter a username and/or an email to update.", "danger");
+        return;
+      }
+      this.savingProfile = true;
+      try {
+        const res = await fetch(`${API_BASE}/auth/profile`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.getToken()}` },
+          body: JSON.stringify({ username, email }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.user = data.user;
+          this.profileForm = { username: this.user.username || "", email: this.user.email || "" };
+          this.showAlert("Profile updated!");
+        } else { this.showAlert(data.message || "Failed to update profile.", "danger"); }
+      } catch { this.showAlert("Failed to connect to the server.", "danger"); }
+      finally { this.savingProfile = false; }
+    },
+
+    async changePassword() {
+      const { currentPassword, newPassword, confirmNewPassword } = this.passwordForm;
+      if (!currentPassword || !newPassword || !confirmNewPassword) {
+        this.showAlert("Fill in all password fields.", "danger");
+        return;
+      }
+      if (newPassword.length < 6) {
+        this.showAlert("New password must be at least 6 characters.", "danger");
+        return;
+      }
+      if (newPassword !== confirmNewPassword) {
+        this.showAlert("New password and confirmation don't match.", "danger");
+        return;
+      }
+      this.changingPassword = true;
+      try {
+        const res = await fetch(`${API_BASE}/auth/change-password`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.getToken()}` },
+          body: JSON.stringify({ currentPassword, newPassword }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.passwordForm = { currentPassword: "", newPassword: "", confirmNewPassword: "" };
+          this.showAlert("Password changed successfully!");
+        } else { this.showAlert(data.message || "Failed to change password.", "danger"); }
+      } catch { this.showAlert("Failed to connect to the server.", "danger"); }
+      finally { this.changingPassword = false; }
     },
 
     // ── Navigation ──────────────────────────────────────────

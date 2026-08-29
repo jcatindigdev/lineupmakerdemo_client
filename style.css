@@ -228,7 +228,12 @@ button.navbar-toggler span.navbar-toggler-icon {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 160px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--transition);
 }
+
+.nav-user-pill__name:hover { color: var(--gold); }
 
 .nav-user-pill__logout {
   background: rgba(255,255,255,.08);

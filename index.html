@@ -33,10 +33,10 @@
 
       <form @submit.prevent="login" autocomplete="on" novalidate>
         <div class="mb-3">
-          <label class="form-label-app" for="gate-email">Email</label>
-          <input id="gate-email" type="email" class="form-control-app w-100"
-            v-model="loginForm.email" placeholder="you@example.com"
-            required autocomplete="email" />
+          <label class="form-label-app" for="gate-email">Username or Email</label>
+          <input id="gate-email" type="text" class="form-control-app w-100"
+            v-model="loginForm.identifier" placeholder="you@example.com or username"
+            required autocomplete="username" />
         </div>
         <div class="mb-4">
           <label class="form-label-app" for="gate-pass">Password</label>
@@ -148,9 +148,9 @@
           <!-- User pill -->
           <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
             <div class="nav-user-pill">
-              <span class="nav-user-pill__name">
-                <i class="bi bi-person-circle me-1"></i>{{ user.username }}
-              </span>
+              <a href="#" class="nav-user-pill__name" @click.prevent="openProfile" title="View profile">
+                <i class="bi bi-person-circle me-1"></i>{{ user.username || user.email }}
+              </a>
               <button class="nav-user-pill__logout" @click="logout" title="Sign out">
                 <i class="bi bi-box-arrow-right"></i>
               </button>
@@ -981,6 +981,83 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════
+       TAB: PROFILE
+  ══════════════════════════════════════════════════════ -->
+  <div v-show="activeTab === 'profile'" class="container-fluid px-3 px-md-4 py-3">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">My Profile</h2>
+        <p class="section-sub">Update your username, email, or password.</p>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-12 col-md-6">
+        <div class="builder-panel">
+          <div class="builder-panel__head">
+            <h5><i class="bi bi-person-fill me-2"></i>Account Details</h5>
+          </div>
+          <div class="mb-3">
+            <label class="form-label-app">Username</label>
+            <input type="text" class="form-control-app" v-model="profileForm.username" placeholder="Choose a username" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label-app">Email</label>
+            <input type="email" class="form-control-app" v-model="profileForm.email" placeholder="you@example.com" />
+          </div>
+          <small class="text-muted d-block mb-3">
+            <i class="bi bi-info-circle"></i> Leave a field blank to keep it unchanged.
+          </small>
+          <button @click="updateProfile" :disabled="savingProfile" class="btn btn-primary-app w-100 fw-bold">
+            <span v-if="savingProfile"><span class="spinner-border spinner-border-sm me-1"></span> Saving...</span>
+            <span v-else><i class="bi bi-check-lg me-1"></i> Save Changes</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <div class="builder-panel">
+          <div class="builder-panel__head">
+            <h5><i class="bi bi-shield-lock-fill me-2"></i>Change Password</h5>
+          </div>
+          <div class="mb-3">
+            <label class="form-label-app">Current Password</label>
+            <div class="pw-wrap">
+              <input :type="showCurrentPassword ? 'text' : 'password'" class="form-control-app w-100"
+                v-model="passwordForm.currentPassword" autocomplete="current-password" />
+              <button type="button" class="pw-toggle" @click="showCurrentPassword = !showCurrentPassword"
+                :title="showCurrentPassword ? 'Hide password' : 'Show password'">
+                <i :class="showCurrentPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label-app">New Password</label>
+            <div class="pw-wrap">
+              <input :type="showNewPassword ? 'text' : 'password'" class="form-control-app w-100"
+                v-model="passwordForm.newPassword" autocomplete="new-password" />
+              <button type="button" class="pw-toggle" @click="showNewPassword = !showNewPassword"
+                :title="showNewPassword ? 'Hide password' : 'Show password'">
+                <i :class="showNewPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+              </button>
+            </div>
+            <small class="text-muted d-block mt-1">At least 6 characters.</small>
+          </div>
+          <div class="mb-3">
+            <label class="form-label-app">Confirm New Password</label>
+            <input :type="showNewPassword ? 'text' : 'password'" class="form-control-app w-100"
+              v-model="passwordForm.confirmNewPassword" autocomplete="new-password" />
+          </div>
+          <button @click="changePassword" :disabled="changingPassword" class="btn btn-outline-secondary w-100 fw-bold">
+            <span v-if="changingPassword"><span class="spinner-border spinner-border-sm me-1"></span> Updating...</span>
+            <span v-else><i class="bi bi-key-fill me-1"></i> Change Password</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Share Link Modal ──────────────────────────────── -->
   <div class="modal fade" id="shareLinkModal" tabindex="-1" aria-labelledby="shareLinkModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -1172,12 +1249,12 @@
         <form @submit.prevent="createUser">
           <div class="modal-body">
             <div class="mb-3">
-              <label class="form-label">Username</label>
-              <input type="text" class="form-control" v-model="adminCreateForm.username" required />
+              <label class="form-label">Username <small class="text-muted">(username and/or email required)</small></label>
+              <input type="text" class="form-control" v-model="adminCreateForm.username" />
             </div>
             <div class="mb-3">
               <label class="form-label">Email</label>
-              <input type="email" class="form-control" v-model="adminCreateForm.email" required />
+              <input type="email" class="form-control" v-model="adminCreateForm.email" />
             </div>
             <div class="mb-3">
               <label class="form-label">Password</label>
