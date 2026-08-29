@@ -357,6 +357,10 @@ createApp({
         contentType: "song",
         voicings: EMPTY_VOICINGS(),
         scoreUrl: "",
+        attachmentFile: null,
+        attachmentUrl: "",
+        attachmentName: "",
+        attachmentType: "",
       },
       updating: false,
     };
@@ -849,6 +853,10 @@ createApp({
           others:          item.voicings?.others          || "",
         },
         scoreUrl: item.scoreUrl || "",
+        attachmentFile: null,
+        attachmentUrl: item.attachmentUrl || "",
+        attachmentName: item.attachmentName || "",
+        attachmentType: item.attachmentType || "",
       };
       const modalEl = document.getElementById("editModal");
       if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -865,6 +873,7 @@ createApp({
       }
       this.updating = true;
       try {
+        const attachment = await this.uploadStagedAttachment("editForm");
         const v = this.editForm.voicings;
         const payload = {
           title:       this.editForm.title.trim(),
@@ -885,6 +894,9 @@ createApp({
             keys2: v.keys2?.trim() || "", others: v.others?.trim() || "",
           },
           scoreUrl: this.editForm.scoreUrl.trim(),
+          attachmentUrl:  attachment.attachmentUrl,
+          attachmentName: attachment.attachmentName,
+          attachmentType: attachment.attachmentType,
         };
         const res = await fetch(`${API_BASE}/content/${this.editForm._id}`, {
           method: "PUT",
@@ -975,7 +987,7 @@ createApp({
     },
 
     // ── Chord sheet attachment (photo / PDF) ──────────────────
-    async onAttachmentSelected(e) {
+    async onAttachmentSelected(e, target = "form") {
       const file = e.target.files && e.target.files[0];
       e.target.value = ""; // allow re-selecting the same file later
       if (!file) return;
@@ -990,23 +1002,25 @@ createApp({
         return;
       }
 
+      const formObj = this[target];
+
       if (file.type === "application/pdf") {
         this.convertingAttachment = true;
         try {
           const imageFile = await this.convertPdfFileToImage(file);
-          this.form.attachmentFile = imageFile;
-          this.form.attachmentName = imageFile.name;
-          this.form.attachmentType = "image";
-          this.form.attachmentUrl = "";
+          formObj.attachmentFile = imageFile;
+          formObj.attachmentName = imageFile.name;
+          formObj.attachmentType = "image";
+          formObj.attachmentUrl = "";
           this.showAlert("PDF converted to an image so it works with Auto Scroll.");
         } catch (err) {
           console.error("PDF conversion failed:", err);
           // Fall back to the original PDF so the upload isn't blocked
           // entirely — it just won't have the Auto Scroll treatment.
-          this.form.attachmentFile = file;
-          this.form.attachmentName = file.name;
-          this.form.attachmentType = "pdf";
-          this.form.attachmentUrl = "";
+          formObj.attachmentFile = file;
+          formObj.attachmentName = file.name;
+          formObj.attachmentType = "pdf";
+          formObj.attachmentUrl = "";
           this.showAlert("Couldn't convert this PDF to an image, so it was kept as a PDF. Auto Scroll won't apply to it.", "danger");
         } finally {
           this.convertingAttachment = false;
@@ -1015,10 +1029,10 @@ createApp({
       }
 
       // Stage the file locally; it's only uploaded when the form is saved.
-      this.form.attachmentFile = file;
-      this.form.attachmentName = file.name;
-      this.form.attachmentType = "image";
-      this.form.attachmentUrl = ""; // cleared until actually uploaded
+      formObj.attachmentFile = file;
+      formObj.attachmentName = file.name;
+      formObj.attachmentType = "image";
+      formObj.attachmentUrl = ""; // cleared until actually uploaded
     },
 
     // Renders every page of a PDF to a canvas via PDF.js and stitches
@@ -1070,26 +1084,28 @@ createApp({
       return new File([blob], newName, { type: "image/png" });
     },
 
-    removeAttachment() {
-      this.form.attachmentFile = null;
-      this.form.attachmentUrl  = "";
-      this.form.attachmentName = "";
-      this.form.attachmentType = "";
+    removeAttachment(target = "form") {
+      const formObj = this[target];
+      formObj.attachmentFile = null;
+      formObj.attachmentUrl  = "";
+      formObj.attachmentName = "";
+      formObj.attachmentType = "";
     },
 
     // Uploads the staged file (if any) and returns { attachmentUrl, attachmentName, attachmentType }
-    async uploadStagedAttachment() {
-      if (!this.form.attachmentFile) {
+    async uploadStagedAttachment(target = "form") {
+      const formObj = this[target];
+      if (!formObj.attachmentFile) {
         return {
-          attachmentUrl:  this.form.attachmentUrl  || "",
-          attachmentName: this.form.attachmentName || "",
-          attachmentType: this.form.attachmentType || "",
+          attachmentUrl:  formObj.attachmentUrl  || "",
+          attachmentName: formObj.attachmentName || "",
+          attachmentType: formObj.attachmentType || "",
         };
       }
       this.uploadingAttachment = true;
       try {
         const fd = new FormData();
-        fd.append("file", this.form.attachmentFile);
+        fd.append("file", formObj.attachmentFile);
         const res = await fetch(`${API_BASE}/content/upload`, {
           method: "POST",
           headers: { Authorization: `Bearer ${this.getToken()}` },

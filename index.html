@@ -1286,6 +1286,41 @@
                 <label class="form-label form-label-app">Score Link</label>
                 <input type="url" class="form-control" v-model="editForm.scoreUrl" placeholder="https://drive.google.com/..." />
               </div>
+
+              <!-- Chord sheet photo / PDF upload (chords only) -->
+              <template v-if="editForm.contentType === 'chord'">
+                <div class="resources-section__head"><i class="bi bi-camera"></i> Chord Sheet Photo / PDF <small class="text-muted ms-1">(optional)</small></div>
+                <div class="mb-1">
+                  <div v-if="editForm.attachmentUrl && !editForm.attachmentFile" class="attachment-preview mb-2">
+                    <i :class="editForm.attachmentType === 'pdf' ? 'bi bi-file-earmark-pdf-fill' : 'bi bi-file-earmark-image-fill'"></i>
+                    <span class="attachment-preview__name">
+                      {{ editForm.attachmentName || (editForm.attachmentType === 'pdf' ? 'Current PDF' : 'Current photo') }}
+                    </span>
+                    <a :href="editForm.attachmentUrl" target="_blank" rel="noopener" class="ms-2 small">Preview</a>
+                    <button type="button" class="btn-close ms-auto" @click="removeAttachment('editForm')" title="Remove"></button>
+                  </div>
+
+                  <label class="form-label form-label-app">
+                    {{ editForm.attachmentUrl ? 'Replace chord sheet' : 'Upload a scanned chord sheet' }}
+                  </label>
+                  <input type="file" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+                    :disabled="convertingAttachment" @change="onAttachmentSelected($event, 'editForm')" />
+                  <small class="text-muted mt-1 d-block">
+                    <i class="bi bi-info-circle"></i> JPG, PNG, WEBP, GIF, or PDF — max 8MB. PDFs are automatically converted to an image so Auto Scroll works on them.
+                  </small>
+
+                  <div v-if="convertingAttachment" class="attachment-preview mt-2">
+                    <span class="spinner-border spinner-border-sm"></span>
+                    <span class="attachment-preview__name">Converting PDF to an image…</span>
+                  </div>
+                  <div v-else-if="editForm.attachmentFile" class="attachment-preview mt-2">
+                    <i :class="editForm.attachmentType === 'pdf' ? 'bi bi-file-earmark-pdf-fill' : 'bi bi-file-earmark-image-fill'"></i>
+                    <span class="attachment-preview__name">{{ editForm.attachmentName }} (new)</span>
+                    <span v-if="uploadingAttachment" class="spinner-border spinner-border-sm ms-2"></span>
+                    <button type="button" class="btn-close ms-auto" @click="removeAttachment('editForm')" title="Remove"></button>
+                  </div>
+                </div>
+              </template>
             </div>
             <div class="modal-footer px-0 pb-0">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
