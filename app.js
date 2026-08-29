@@ -323,6 +323,8 @@ createApp({
       currentPlaylist: null,
       playerIndex: 0,
       playerLoading: false,
+      savingToMyPlaylists: false,
+      savedToMyPlaylists: false,
       pendingShareId: null,
       isOffline: !navigator.onLine,
       swipeStartX: 0,
@@ -388,6 +390,12 @@ createApp({
       if (!this.currentPlayerItem) return "";
       const body = this.currentPlayerItem.body;
       return this.looksLikeFormattedHtml(body) ? (body || "") : this.escapeHtml(body);
+    },
+    // Whether the logged-in user already owns the playlist currently
+    // open in the player — controls the "Save to My Playlists" button.
+    isPlaylistOwner() {
+      if (!this.currentPlaylist || !this.user) return false;
+      return String(this.currentPlaylist.owner) === String(this.user.id);
     },
     // Pre-rendered chord diagrams for the selected root
     activeChordDiagrams() {
@@ -1497,6 +1505,7 @@ createApp({
         if (data.success) {
           this.currentPlaylist = data.data;
           this.playerIndex = 0;
+          this.savedToMyPlaylists = false;
           this.stopAutoscroll();
           this.switchTab("player");
         } else {
@@ -1510,8 +1519,32 @@ createApp({
       // Opening from "My Playlists" — we already have the full data.
       this.currentPlaylist = playlist;
       this.playerIndex = 0;
+      this.savedToMyPlaylists = false;
       this.stopAutoscroll();
       this.switchTab("player");
+    },
+
+    // Makes an independent copy of the playlist currently open in the
+    // player, owned by the logged-in user, so it shows up in their own
+    // "My Playlists" from now on. A snapshot, not a live link — later
+    // edits to the original won't carry over to this copy.
+    async saveToMyPlaylists() {
+      if (!this.currentPlaylist) return;
+      this.savingToMyPlaylists = true;
+      try {
+        const res = await fetch(`${API_BASE}/playlists/${this.currentPlaylist.shareId}/save`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${this.getToken()}` },
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.savedToMyPlaylists = true;
+          this.showAlert("Saved to your playlists!");
+        } else {
+          this.showAlert(data.message || "Failed to save this playlist.", "danger");
+        }
+      } catch { this.showAlert("Failed to connect to the server.", "danger"); }
+      finally { this.savingToMyPlaylists = false; }
     },
 
     closePlayer() {

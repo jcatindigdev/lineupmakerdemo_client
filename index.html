@@ -933,8 +933,18 @@
         <button class="btn btn-outline-secondary btn-sm" @click="closePlayer">
           <i class="bi bi-arrow-left me-1"></i> Close
         </button>
-        <div class="player-progress">
-          {{ playerIndex + 1 }} / {{ currentPlaylist.items.length }}
+        <div class="d-flex align-items-center gap-2">
+          <button v-if="!isPlaylistOwner" class="btn btn-sm"
+            :class="savedToMyPlaylists ? 'btn-success' : 'btn-primary-app'"
+            :disabled="savingToMyPlaylists || savedToMyPlaylists"
+            @click="saveToMyPlaylists">
+            <span v-if="savingToMyPlaylists"><span class="spinner-border spinner-border-sm me-1"></span> Saving...</span>
+            <span v-else-if="savedToMyPlaylists"><i class="bi bi-check-circle-fill me-1"></i> Saved</span>
+            <span v-else><i class="bi bi-bookmark-plus-fill me-1"></i> Save to My Playlists</span>
+          </button>
+          <div class="player-progress">
+            {{ playerIndex + 1 }} / {{ currentPlaylist.items.length }}
+          </div>
         </div>
       </div>
 
