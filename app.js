@@ -295,6 +295,7 @@ createApp({
       },
       uploading: false,
       uploadingAttachment: false,
+      convertingAttachment: false,
 
       // ── Export / Builder settings ─────────────────────────
       pdfSettings: { title: "", author: "", includeMetadata: true },
@@ -703,7 +704,11 @@ createApp({
     },
 
     hasResources(item) {
-      return this.activeVoicings(item).length > 0 || !!(item?.scoreUrl) || !!(item?.attachmentUrl);
+      // Image attachments are now shown as the main content (replacing
+      // the text body), not listed as a resource link — only legacy PDF
+      // attachments still need a "Resources" entry.
+      const hasPdfAttachment = !!(item?.attachmentUrl) && item?.attachmentType === "pdf";
+      return this.activeVoicings(item).length > 0 || !!(item?.scoreUrl) || hasPdfAttachment;
     },
 
     voicingLabel(part) {
@@ -970,7 +975,7 @@ createApp({
     },
 
     // ── Chord sheet attachment (photo / PDF) ──────────────────
-    onAttachmentSelected(e) {
+    async onAttachmentSelected(e) {
       const file = e.target.files && e.target.files[0];
       e.target.value = ""; // allow re-selecting the same file later
       if (!file) return;
@@ -985,11 +990,84 @@ createApp({
         return;
       }
 
+      if (file.type === "application/pdf") {
+        this.convertingAttachment = true;
+        try {
+          const imageFile = await this.convertPdfFileToImage(file);
+          this.form.attachmentFile = imageFile;
+          this.form.attachmentName = imageFile.name;
+          this.form.attachmentType = "image";
+          this.form.attachmentUrl = "";
+          this.showAlert("PDF converted to an image so it works with Auto Scroll.");
+        } catch (err) {
+          console.error("PDF conversion failed:", err);
+          // Fall back to the original PDF so the upload isn't blocked
+          // entirely — it just won't have the Auto Scroll treatment.
+          this.form.attachmentFile = file;
+          this.form.attachmentName = file.name;
+          this.form.attachmentType = "pdf";
+          this.form.attachmentUrl = "";
+          this.showAlert("Couldn't convert this PDF to an image, so it was kept as a PDF. Auto Scroll won't apply to it.", "danger");
+        } finally {
+          this.convertingAttachment = false;
+        }
+        return;
+      }
+
       // Stage the file locally; it's only uploaded when the form is saved.
       this.form.attachmentFile = file;
       this.form.attachmentName = file.name;
-      this.form.attachmentType = file.type === "application/pdf" ? "pdf" : "image";
+      this.form.attachmentType = "image";
       this.form.attachmentUrl = ""; // cleared until actually uploaded
+    },
+
+    // Renders every page of a PDF to a canvas via PDF.js and stitches
+    // them into one tall PNG, so a scanned chord sheet displays (and
+    // scrolls with Auto Scroll) exactly like a regular chord chart
+    // instead of sitting in an embedded PDF viewer with its own,
+    // separate internal scrolling.
+    async convertPdfFileToImage(file) {
+      if (!window.pdfjsLib) throw new Error("PDF renderer not available.");
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      const scale = 2; // render at 2x so chord text stays sharp
+      const pageCanvases = [];
+      let totalHeight = 0;
+      let maxWidth = 0;
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+        pageCanvases.push(canvas);
+        totalHeight += canvas.height;
+        maxWidth = Math.max(maxWidth, canvas.width);
+      }
+
+      // Stack every page into a single tall image, in order.
+      const stitched = document.createElement("canvas");
+      stitched.width = maxWidth;
+      stitched.height = totalHeight;
+      const ctx = stitched.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, stitched.width, stitched.height);
+
+      let yOffset = 0;
+      for (const canvas of pageCanvases) {
+        ctx.drawImage(canvas, 0, yOffset);
+        yOffset += canvas.height;
+      }
+
+      const blob = await new Promise((resolve) => stitched.toBlob(resolve, "image/png", 0.92));
+      if (!blob) throw new Error("Failed to export converted image.");
+
+      const newName = file.name.replace(/\.pdf$/i, "") + ".png";
+      return new File([blob], newName, { type: "image/png" });
     },
 
     removeAttachment() {

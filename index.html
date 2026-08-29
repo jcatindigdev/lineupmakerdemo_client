@@ -479,7 +479,11 @@
         </div>
         <div v-if="detailItem.contentType === 'chord'" class="autoscroll-bar__spacer"></div>
 
-        <div v-if="detailItem.contentType === 'chord'" class="detail-card__body detail-card__body--chord"
+        <div v-if="detailItem.contentType === 'chord' && detailItem.attachmentType === 'image' && detailItem.attachmentUrl"
+          class="detail-attachment-wrap">
+          <img :src="detailItem.attachmentUrl" :alt="detailItem.attachmentName || detailItem.title" class="detail-attachment-full" />
+        </div>
+        <div v-else-if="detailItem.contentType === 'chord'" class="detail-card__body detail-card__body--chord"
           v-html="detailBodyHtml"></div>
         <div v-else class="detail-card__body">{{ detailItem.body }}</div>
         <template v-if="hasResources(detailItem)">
@@ -515,19 +519,17 @@
                 </a>
               </div>
             </div>
-            <div v-if="detailItem.attachmentUrl" class="detail-resources__group">
+            <!-- Legacy PDF attachments (uploaded before PDF-to-image
+                 conversion existed) still appear here as a link, since
+                 they're not shown as the main content above. -->
+            <div v-if="detailItem.attachmentUrl && detailItem.attachmentType === 'pdf'" class="detail-resources__group">
               <div class="detail-resources__group-label">
-                <i :class="detailItem.attachmentType === 'pdf' ? 'bi bi-file-earmark-pdf-fill' : 'bi bi-file-earmark-image-fill'" class="me-1"></i>
-                Chord Sheet {{ detailItem.attachmentType === 'pdf' ? '(PDF)' : '(Photo)' }}
-              </div>
-              <div v-if="detailItem.attachmentType === 'image'" class="mb-2">
-                <img :src="detailItem.attachmentUrl" :alt="detailItem.attachmentName || 'Chord sheet'" class="detail-attachment-img" />
+                <i class="bi bi-file-earmark-pdf-fill me-1"></i> Chord Sheet (PDF)
               </div>
               <div class="detail-resources__links">
                 <a :href="detailItem.attachmentUrl" target="_blank" rel="noopener"
                   class="detail-resource-link detail-resource-link--score">
-                  <i class="bi bi-box-arrow-up-right me-1"></i>
-                  {{ detailItem.attachmentType === 'pdf' ? 'View PDF' : 'View Full Photo' }}
+                  <i class="bi bi-box-arrow-up-right me-1"></i> View PDF
                 </a>
               </div>
             </div>
@@ -734,12 +736,16 @@
           <div class="mb-1">
             <label class="form-label-app">Upload a scanned chord sheet</label>
             <input type="file" class="form-control-app" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
-              @change="onAttachmentSelected" />
+              :disabled="convertingAttachment" @change="onAttachmentSelected" />
             <small class="text-muted mt-1 d-block">
-              <i class="bi bi-info-circle"></i> JPG, PNG, WEBP, GIF, or PDF — max 8MB. Stored directly in the database.
+              <i class="bi bi-info-circle"></i> JPG, PNG, WEBP, GIF, or PDF — max 8MB. PDFs are automatically converted to an image so Auto Scroll works on them.
             </small>
 
-            <div v-if="form.attachmentName" class="attachment-preview mt-2">
+            <div v-if="convertingAttachment" class="attachment-preview mt-2">
+              <span class="spinner-border spinner-border-sm"></span>
+              <span class="attachment-preview__name">Converting PDF to an image…</span>
+            </div>
+            <div v-else-if="form.attachmentName" class="attachment-preview mt-2">
               <i :class="form.attachmentType === 'pdf' ? 'bi bi-file-earmark-pdf-fill' : 'bi bi-file-earmark-image-fill'"></i>
               <span class="attachment-preview__name">{{ form.attachmentName }}</span>
               <span v-if="uploadingAttachment" class="spinner-border spinner-border-sm ms-2"></span>
@@ -967,7 +973,11 @@
         </div>
         <div v-if="currentPlayerItem.contentType === 'chord'" class="autoscroll-bar__spacer"></div>
 
-        <div v-if="currentPlayerItem.contentType === 'chord'" class="detail-card__body detail-card__body--chord"
+        <div v-if="currentPlayerItem.contentType === 'chord' && currentPlayerItem.attachmentType === 'image' && currentPlayerItem.attachmentUrl"
+          class="detail-attachment-wrap">
+          <img :src="currentPlayerItem.attachmentUrl" :alt="currentPlayerItem.attachmentName || currentPlayerItem.title" class="detail-attachment-full" />
+        </div>
+        <div v-else-if="currentPlayerItem.contentType === 'chord'" class="detail-card__body detail-card__body--chord"
           v-html="playerBodyHtml"></div>
         <div v-else class="detail-card__body">{{ currentPlayerItem.body }}</div>
         <template v-if="hasResources(currentPlayerItem)">
@@ -1003,19 +1013,17 @@
                 </a>
               </div>
             </div>
-            <div v-if="currentPlayerItem.attachmentUrl" class="detail-resources__group">
+            <!-- Legacy PDF attachments (uploaded before PDF-to-image
+                 conversion existed) still appear here as a link, since
+                 they're not shown as the main content above. -->
+            <div v-if="currentPlayerItem.attachmentUrl && currentPlayerItem.attachmentType === 'pdf'" class="detail-resources__group">
               <div class="detail-resources__group-label">
-                <i :class="currentPlayerItem.attachmentType === 'pdf' ? 'bi bi-file-earmark-pdf-fill' : 'bi bi-file-earmark-image-fill'" class="me-1"></i>
-                Chord Sheet {{ currentPlayerItem.attachmentType === 'pdf' ? '(PDF)' : '(Photo)' }}
-              </div>
-              <div v-if="currentPlayerItem.attachmentType === 'image'" class="mb-2">
-                <img :src="currentPlayerItem.attachmentUrl" :alt="currentPlayerItem.attachmentName || 'Chord sheet'" class="detail-attachment-img" />
+                <i class="bi bi-file-earmark-pdf-fill me-1"></i> Chord Sheet (PDF)
               </div>
               <div class="detail-resources__links">
                 <a :href="currentPlayerItem.attachmentUrl" target="_blank" rel="noopener"
                   class="detail-resource-link detail-resource-link--score">
-                  <i class="bi bi-box-arrow-up-right me-1"></i>
-                  {{ currentPlayerItem.attachmentType === 'pdf' ? 'View PDF' : 'View Full Photo' }}
+                  <i class="bi bi-box-arrow-up-right me-1"></i> View PDF
                 </a>
               </div>
             </div>
@@ -1351,6 +1359,17 @@
 </div><!-- /#app -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<!-- Renders uploaded PDF chord sheets to an image client-side (see
+     convertPdfFileToImage in app.js) so Auto Scroll works on them just
+     like a regular chord chart, instead of an embedded PDF viewer that
+     scrolls independently of the page. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
+</script>
 <script src="app.js"></script>
 <script>
   // Enables offline playlists: caches the app shell and any playlist

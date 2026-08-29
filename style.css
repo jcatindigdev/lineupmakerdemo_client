@@ -713,6 +713,23 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
   display: block;
 }
 
+/* Chord sheet image shown as the main content (replacing the text
+   body) in the detail view and playlist player. No max-height here —
+   unlike the small resource preview above, this is the whole chart,
+   and Auto Scroll needs the full image in the page's scroll height. */
+.detail-attachment-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.detail-attachment-full {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  display: block;
+}
+
 /* ════════════════════════════════════════════════════════
    PLAYLIST PLAYER
 ════════════════════════════════════════════════════════ */
