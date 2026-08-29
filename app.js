@@ -1249,10 +1249,21 @@ createApp({
     startAutoscroll() {
       if (this.autoscroll.active) return;
       this.autoscroll.active = true;
+      // Accumulate fractional pixels across frames rather than asking
+      // scrollBy for less than 1px at a time — many browsers silently
+      // discard sub-pixel scroll amounts instead of accumulating them,
+      // which is why low speeds (e.g. 0.7 and below → 0.35px/frame)
+      // previously did nothing at all.
+      let pixelRemainder = 0;
       const scroll = () => {
         if (!this.autoscroll.active) return;
         const speed = Number.isFinite(this.autoscroll.speed) ? this.autoscroll.speed : 1;
-        window.scrollBy(0, speed * 0.5);
+        pixelRemainder += speed * 0.5;
+        const wholePixels = Math.floor(pixelRemainder);
+        if (wholePixels >= 1) {
+          window.scrollBy(0, wholePixels);
+          pixelRemainder -= wholePixels;
+        }
         this.autoscroll.rafId = requestAnimationFrame(scroll);
       };
       this.autoscroll.rafId = requestAnimationFrame(scroll);
