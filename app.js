@@ -411,6 +411,7 @@ createApp({
     // Intercept browser back button
     window.addEventListener("popstate", (e) => {
       const prev = this.tabHistory.pop();
+      this.closeAnyOpenModal();
       if (prev) {
         this.stopAutoscroll();
         this.activeTab = prev;
@@ -511,7 +512,28 @@ createApp({
     },
 
     // ── Navigation ──────────────────────────────────────────
+    // Force-closes any Bootstrap modal still marked "open" and strips
+    // any leftover body scroll-lock styles Bootstrap's own async cleanup
+    // may not have gotten to yet. See switchTab() for why this matters.
+    closeAnyOpenModal() {
+      document.querySelectorAll(".modal.show").forEach((modalEl) => {
+        const inst = bootstrap.Modal.getInstance(modalEl);
+        if (inst) inst.hide();
+      });
+      document.body.classList.remove("modal-open");
+      document.body.style.removeProperty("overflow");
+      document.body.style.removeProperty("padding-right");
+      document.querySelectorAll(".modal-backdrop").forEach((el) => el.remove());
+    },
+
     switchTab(tab) {
+      // Bootstrap can leave `overflow: hidden` stuck on <body> if a modal
+      // gets left "open" when the user navigates away some other way (e.g.
+      // the browser back button) instead of using the modal's own close
+      // button. That silently breaks window scrolling — including
+      // autoscroll — app-wide until the page reloads, so always clean up
+      // first, every time we change views.
+      this.closeAnyOpenModal();
       if (this.activeTab && this.activeTab !== tab) {
         this.tabHistory.push(this.activeTab);
         if (this.tabHistory.length > 20) this.tabHistory.shift();
@@ -1152,7 +1174,8 @@ createApp({
       this.autoscroll.active = true;
       const scroll = () => {
         if (!this.autoscroll.active) return;
-        window.scrollBy(0, this.autoscroll.speed * 0.5);
+        const speed = Number.isFinite(this.autoscroll.speed) ? this.autoscroll.speed : 1;
+        window.scrollBy(0, speed * 0.5);
         this.autoscroll.rafId = requestAnimationFrame(scroll);
       };
       this.autoscroll.rafId = requestAnimationFrame(scroll);
