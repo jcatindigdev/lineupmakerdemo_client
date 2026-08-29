@@ -352,7 +352,7 @@
             </div>
           </div>
           <h5 class="content-card__title">{{ item.title }}</h5>
-          <p class="content-card__body content-card__body--chord">{{ truncate(item.body, 120) }}</p>
+          <p class="content-card__body content-card__body--chord">{{ truncate(stripHtml(item.body), 120) }}</p>
           <div class="content-card__footer">
             <span class="content-card__author"><i class="bi bi-person-fill"></i> {{ item.author }}</span>
             <span class="content-card__date">{{ formatDate(item.createdAt) }}</span>
@@ -456,8 +456,8 @@
         </div>
         <hr class="detail-card__divider" />
 
-        <!-- Autoscroll control bar (chord items only) -->
-        <div v-if="detailItem.contentType === 'chord'" class="autoscroll-bar">
+        <!-- Autoscroll control bar (chord items only) — sticky/floating -->
+        <div v-if="detailItem.contentType === 'chord'" class="autoscroll-bar autoscroll-bar--floating">
           <button class="autoscroll-bar__btn" @click="toggleAutoscroll"
             :class="{ 'autoscroll-bar__btn--active': autoscroll.active }">
             <i :class="autoscroll.active ? 'bi bi-pause-fill' : 'bi bi-play-fill'"></i>
@@ -466,17 +466,19 @@
           <div class="autoscroll-bar__speed">
             <span class="autoscroll-bar__label">Speed</span>
             <input type="range" class="autoscroll-bar__range"
-              v-model.number="autoscroll.speed" min="0.25" max="10" step="0.25" />
-            <span class="autoscroll-bar__val">{{ autoscroll.speed }}x</span>
+              :value="autoscroll.speed" @input="setAutoscrollSpeed($event.target.value)" min="0.3" max="3" step="0.1" />
+            <span class="autoscroll-bar__val">{{ autoscroll.speed.toFixed(1) }}x</span>
           </div>
           <button class="autoscroll-bar__top" @click="scrollToTop()"
             title="Back to top">
             <i class="bi bi-arrow-up-circle"></i>
           </button>
         </div>
+        <div v-if="detailItem.contentType === 'chord'" class="autoscroll-bar__spacer"></div>
 
-        <div class="detail-card__body"
-          :class="{ 'detail-card__body--chord': detailItem.contentType === 'chord' }">{{ detailItem.body }}</div>
+        <div v-if="detailItem.contentType === 'chord'" class="detail-card__body detail-card__body--chord"
+          v-html="detailBodyHtml"></div>
+        <div v-else class="detail-card__body">{{ detailItem.body }}</div>
         <template v-if="hasResources(detailItem)">
           <hr class="detail-card__divider" />
           <div class="detail-card__resources">
@@ -605,14 +607,33 @@
           {{ form.contentType === 'chord' ? 'Chords' : 'Body / Lyrics' }}
           <span class="text-danger">*</span>
         </label>
-        <textarea class="form-control-app" :class="{ 'chord-textarea': form.contentType === 'chord' }"
+
+        <template v-if="form.contentType === 'chord'">
+          <div class="richtext-toolbar">
+            <button type="button" class="richtext-toolbar__btn" title="Bold"
+              @mousedown.prevent="applyFormat('bold', 'form')"><i class="bi bi-type-bold"></i></button>
+            <button type="button" class="richtext-toolbar__btn" title="Italic"
+              @mousedown.prevent="applyFormat('italic', 'form')"><i class="bi bi-type-italic"></i></button>
+            <span class="richtext-toolbar__sep"></span>
+            <span class="richtext-toolbar__label">Highlight:</span>
+            <button v-for="c in highlightColors" :key="c.name" type="button"
+              class="richtext-swatch" :style="{ background: c.value }" :title="c.name"
+              @mousedown.prevent="applyHighlight(c.value, 'form')"></button>
+            <button type="button" class="richtext-toolbar__btn richtext-toolbar__btn--clear" title="Clear highlight"
+              @mousedown.prevent="applyHighlight('transparent', 'form')"><i class="bi bi-eraser"></i></button>
+          </div>
+          <div ref="chordBodyEditable" class="form-control-app chord-textarea richtext-editable"
+            contenteditable="true"
+            @input="onChordBodyInput($event, 'form')"
+            data-placeholder="Paste chords here. Use spaces to align chords above lyrics, then select text to bold, italicize, or highlight it."></div>
+          <small class="text-muted mt-1 d-block">
+            <i class="bi bi-info-circle"></i> Courier New font preserves chord spacing. Select text to bold, italicize, or highlight it.
+          </small>
+        </template>
+
+        <textarea v-else class="form-control-app"
           v-model="form.body" rows="12"
-          :placeholder="form.contentType === 'chord'
-            ? 'Paste chords here. Use spaces to align chords above lyrics:\n\nG           C\nAmazing grace how sweet the sound'
-            : 'Paste lyrics here'"></textarea>
-        <small v-if="form.contentType === 'chord'" class="text-muted mt-1 d-block">
-          <i class="bi bi-info-circle"></i> Courier New font preserves chord spacing.
-        </small>
+          placeholder="Paste lyrics here"></textarea>
       </div>
 
       <div class="resources-section">
@@ -924,8 +945,8 @@
         </div>
         <hr class="detail-card__divider" />
 
-        <!-- Autoscroll control bar — chord items only -->
-        <div v-if="currentPlayerItem.contentType === 'chord'" class="autoscroll-bar">
+        <!-- Autoscroll control bar — chord items only — sticky/floating -->
+        <div v-if="currentPlayerItem.contentType === 'chord'" class="autoscroll-bar autoscroll-bar--floating">
           <button class="autoscroll-bar__btn" @click="toggleAutoscroll"
             :class="{ 'autoscroll-bar__btn--active': autoscroll.active }">
             <i :class="autoscroll.active ? 'bi bi-pause-fill' : 'bi bi-play-fill'"></i>
@@ -934,16 +955,18 @@
           <div class="autoscroll-bar__speed">
             <span class="autoscroll-bar__label">Speed</span>
             <input type="range" class="autoscroll-bar__range"
-              v-model.number="autoscroll.speed" min="0.25" max="10" step="0.25" />
-            <span class="autoscroll-bar__val">{{ autoscroll.speed }}x</span>
+              :value="autoscroll.speed" @input="setAutoscrollSpeed($event.target.value)" min="0.3" max="3" step="0.1" />
+            <span class="autoscroll-bar__val">{{ autoscroll.speed.toFixed(1) }}x</span>
           </div>
           <button class="autoscroll-bar__top" @click="scrollToTop()" title="Back to top">
             <i class="bi bi-arrow-up-circle"></i>
           </button>
         </div>
+        <div v-if="currentPlayerItem.contentType === 'chord'" class="autoscroll-bar__spacer"></div>
 
-        <div class="detail-card__body"
-          :class="{ 'detail-card__body--chord': currentPlayerItem.contentType === 'chord' }">{{ currentPlayerItem.body }}</div>
+        <div v-if="currentPlayerItem.contentType === 'chord'" class="detail-card__body detail-card__body--chord"
+          v-html="playerBodyHtml"></div>
+        <div v-else class="detail-card__body">{{ currentPlayerItem.body }}</div>
       </div>
 
       <div class="player-nav">
@@ -1009,7 +1032,27 @@
             </div>
             <div class="mb-3">
               <label class="form-label fw-bold">{{ editForm.contentType === 'chord' ? 'Chords' : 'Body / Lyrics' }}</label>
-              <textarea class="form-control" :class="{ 'chord-textarea': editForm.contentType === 'chord' }"
+
+              <template v-if="editForm.contentType === 'chord'">
+                <div class="richtext-toolbar">
+                  <button type="button" class="richtext-toolbar__btn" title="Bold"
+                    @mousedown.prevent="applyFormat('bold', 'editForm')"><i class="bi bi-type-bold"></i></button>
+                  <button type="button" class="richtext-toolbar__btn" title="Italic"
+                    @mousedown.prevent="applyFormat('italic', 'editForm')"><i class="bi bi-type-italic"></i></button>
+                  <span class="richtext-toolbar__sep"></span>
+                  <span class="richtext-toolbar__label">Highlight:</span>
+                  <button v-for="c in highlightColors" :key="c.name" type="button"
+                    class="richtext-swatch" :style="{ background: c.value }" :title="c.name"
+                    @mousedown.prevent="applyHighlight(c.value, 'editForm')"></button>
+                  <button type="button" class="richtext-toolbar__btn richtext-toolbar__btn--clear" title="Clear highlight"
+                    @mousedown.prevent="applyHighlight('transparent', 'editForm')"><i class="bi bi-eraser"></i></button>
+                </div>
+                <div ref="editChordBodyEditable" class="form-control chord-textarea richtext-editable"
+                  contenteditable="true"
+                  @input="onChordBodyInput($event, 'editForm')"></div>
+              </template>
+
+              <textarea v-else class="form-control"
                 rows="10" v-model="editForm.body" required></textarea>
             </div>
             <div class="mb-3">

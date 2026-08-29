@@ -326,6 +326,15 @@ createApp({
       swipeStartX: 0,
       swipeStartY: 0,
 
+      // ── Rich text (chord editor) ──────────────────────────
+      highlightColors: [
+        { name: "Yellow",      value: "#fff59d" },
+        { name: "Light Blue",  value: "#a7d8f0" },
+        { name: "Pink",        value: "#f8b9d4" },
+        { name: "Light Purple",value: "#d3bdf0" },
+        { name: "Light Green", value: "#b9e6b0" },
+      ],
+
       // ── Tab history (back button support) ─────────────────
       tabHistory: [],
       loginForm: { email: "", password: "" },
@@ -351,6 +360,20 @@ createApp({
     currentPlayerItem() {
       if (!this.currentPlaylist || !this.currentPlaylist.items || !this.currentPlaylist.items.length) return null;
       return this.currentPlaylist.items[this.playerIndex] || null;
+    },
+    // Safe-to-render HTML for chord bodies (detail view + player view).
+    // Legacy chord sheets saved before rich-text existed are plain
+    // text and may contain a literal "<" or "&" — only treat a body
+    // as real markup if it contains tags the editor itself produces.
+    detailBodyHtml() {
+      if (!this.detailItem) return "";
+      const body = this.detailItem.body;
+      return this.looksLikeFormattedHtml(body) ? (body || "") : this.escapeHtml(body);
+    },
+    playerBodyHtml() {
+      if (!this.currentPlayerItem) return "";
+      const body = this.currentPlayerItem.body;
+      return this.looksLikeFormattedHtml(body) ? (body || "") : this.escapeHtml(body);
     },
     // Pre-rendered chord diagrams for the selected root
     activeChordDiagrams() {
@@ -504,11 +527,6 @@ createApp({
       }
     },
 
-    switchToUpload(contentType = "song") {
-      this.form.contentType = contentType;
-      this.switchTab("upload");
-    },
-
     // ── Detail Page ──────────────────────────────────────────
     openDetail(item, fromTab = "library") {
       this.detailItem   = { ...item };
@@ -529,6 +547,16 @@ createApp({
     truncate(text, len) {
       if (!text) return "";
       return text.length > len ? text.slice(0, len) + "…" : text;
+    },
+
+    // Strips HTML tags for plain-text previews (chord bodies may now
+    // contain <b>/<i>/<span style="background:..."> formatting from
+    // the rich-text editor — card previews should show clean text).
+    stripHtml(html) {
+      if (!html) return "";
+      const div = document.createElement("div");
+      div.innerHTML = html;
+      return div.textContent || div.innerText || "";
     },
 
     formatDate(dateStr) {
@@ -697,10 +725,14 @@ createApp({
       };
       const modalEl = document.getElementById("editModal");
       if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      // The rich-text editor is uncontrolled — load its starting content by hand.
+      this.$nextTick(() => {
+        if (this.$refs.editChordBodyEditable) this.loadChordBodyIntoEditor("editForm", item.body);
+      });
     },
 
     async updateContent() {
-      if (!this.editForm.title.trim() || !this.editForm.body.trim() || !this.editForm.category) {
+      if (!this.editForm.title.trim() || !this.stripHtml(this.editForm.body).trim() || !this.editForm.category) {
         this.showAlert("Title, body, and category are required.", "danger");
         return;
       }
@@ -748,6 +780,71 @@ createApp({
         console.error(err);
         this.showAlert("Failed to connect to the server.", "danger");
       } finally { this.updating = false; }
+    },
+
+    // ── Rich text (chord editor: bold / italic / highlight) ───
+    // The chord body editor is a contenteditable div rather than a
+    // <textarea>, so formatting can be applied to a text selection.
+    // It's deliberately uncontrolled (not bound with v-html on every
+    // keystroke) to avoid the cursor jumping around as Vue re-renders;
+    // instead its innerHTML is read on input and written explicitly
+    // whenever content needs to be loaded in (reset, edit, undo, etc).
+    chordEditorRef(target) {
+      return this.$refs[target === "editForm" ? "editChordBodyEditable" : "chordBodyEditable"];
+    },
+
+    // Legacy chord sheets saved before this feature existed are plain
+    // text and may contain a literal "<" or "&" (e.g. "A<5>", "R&B").
+    // Only treat a body as already-formatted HTML if it actually
+    // contains tags this editor itself produces — otherwise escape it
+    // so those characters render as literal text instead of markup.
+    looksLikeFormattedHtml(str) {
+      return /<\/?(b|i|span)\b/i.test(str || "");
+    },
+
+    escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str || "";
+      return div.innerHTML;
+    },
+
+    loadChordBodyIntoEditor(target, body) {
+      const el = this.chordEditorRef(target);
+      if (!el) return;
+      el.innerHTML = this.looksLikeFormattedHtml(body) ? (body || "") : this.escapeHtml(body);
+    },
+
+    onChordBodyInput(e, target) {
+      if (target === "editForm") this.editForm.body = e.target.innerHTML;
+      else this.form.body = e.target.innerHTML;
+    },
+
+    syncChordBody(target) {
+      const el = this.chordEditorRef(target);
+      if (!el) return;
+      if (target === "editForm") this.editForm.body = el.innerHTML;
+      else this.form.body = el.innerHTML;
+    },
+
+    // Buttons call this via @mousedown.prevent so the text selection
+    // inside the editor is never lost (a normal click would blur the
+    // editable div first and collapse the selection).
+    applyFormat(command, target) {
+      const el = this.chordEditorRef(target);
+      if (!el) return;
+      el.focus();
+      document.execCommand(command, false, null);
+      this.syncChordBody(target);
+    },
+
+    applyHighlight(color, target) {
+      const el = this.chordEditorRef(target);
+      if (!el) return;
+      el.focus();
+      const cmd = (document.queryCommandSupported && document.queryCommandSupported("hiliteColor"))
+        ? "hiliteColor" : "backColor";
+      document.execCommand(cmd, false, color);
+      this.syncChordBody(target);
     },
 
     // ── Chord sheet attachment (photo / PDF) ──────────────────
@@ -812,7 +909,8 @@ createApp({
 
     // ── Upload ───────────────────────────────────────────────
     async uploadContent() {
-      if (!this.form.title.trim() || !this.form.body.trim() || !this.form.category || !this.form.fileType) {
+      const bodyIsEmpty = !this.stripHtml(this.form.body).trim();
+      if (!this.form.title.trim() || bodyIsEmpty || !this.form.category || !this.form.fileType) {
         this.showAlert("Title, body, category, and content type are required.", "danger");
         return;
       }
@@ -873,6 +971,19 @@ createApp({
         attachmentName: "",
         attachmentType: "",
       };
+      // The rich-text editor is an uncontrolled contenteditable (not
+      // reactively bound), so it needs to be cleared out by hand too.
+      if (this.$refs.chordBodyEditable) this.$refs.chordBodyEditable.innerHTML = "";
+    },
+
+    switchToUpload(contentType = "song") {
+      this.form.contentType = contentType;
+      this.switchTab("upload");
+      if (contentType === "chord") {
+        this.$nextTick(() => {
+          if (this.$refs.chordBodyEditable) this.loadChordBodyIntoEditor("form", this.form.body);
+        });
+      }
     },
 
     // ── Builder drag/sort ────────────────────────────────────
@@ -1058,6 +1169,12 @@ createApp({
     toggleAutoscroll() {
       if (this.autoscroll.active) this.stopAutoscroll();
       else this.startAutoscroll();
+    },
+
+    // Rounds slider input to 1 decimal (0.3–3.0 in 0.1 steps) so the
+    // displayed speed never shows floating-point noise like 1.7000000000000002.
+    setAutoscrollSpeed(rawValue) {
+      this.autoscroll.speed = Math.round(parseFloat(rawValue) * 10) / 10;
     },
 
     scrollToTop() {
