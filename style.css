@@ -235,6 +235,18 @@ button.navbar-toggler span.navbar-toggler-icon {
 
 .nav-user-pill__name:hover { color: var(--gold); }
 
+.offline-banner {
+  display: flex;
+  align-items: center;
+  background: #fff3cd;
+  border: 1.5px solid #ffe69c;
+  color: #664d03;
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
 .nav-user-pill__logout {
   background: rgba(255,255,255,.08);
   border: none;

@@ -323,6 +323,7 @@ createApp({
       playerIndex: 0,
       playerLoading: false,
       pendingShareId: null,
+      isOffline: !navigator.onLine,
       swipeStartX: 0,
       swipeStartY: 0,
 
@@ -406,6 +407,9 @@ createApp({
     const sharedId = new URLSearchParams(window.location.search).get("playlist");
     if (sharedId) this.pendingShareId = sharedId;
 
+    window.addEventListener("online", () => { this.isOffline = false; });
+    window.addEventListener("offline", () => { this.isOffline = true; });
+
     this.checkAuth().then(() => {
       if (this.user && this.pendingShareId) {
         const id = this.pendingShareId;
@@ -446,15 +450,32 @@ createApp({
         const data = await res.json();
         if (data.success) {
           this.user = data.user;
+          localStorage.setItem("cachedUser", JSON.stringify(data.user));
           await this.$nextTick();
           this.fetchContent(1);
           this.fetchChords(1);
-        } else { localStorage.removeItem("token"); this.user = null; }
-      } catch (err) { console.error("Auth check failed:", err); }
+        } else {
+          localStorage.removeItem("token");
+          localStorage.removeItem("cachedUser");
+          this.user = null;
+        }
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        // Most likely offline rather than actually logged out — fall back
+        // to the last verified session instead of forcing a login screen
+        // we have no way to complete without a network connection. This
+        // is what lets a previously-opened playlist still work (autoscroll
+        // included) after a full page reload with no internet.
+        const cached = localStorage.getItem("cachedUser");
+        if (cached) {
+          try { this.user = JSON.parse(cached); } catch { /* ignore malformed cache */ }
+        }
+      }
     },
 
     logout() {
       localStorage.removeItem("token");
+      localStorage.removeItem("cachedUser");
       this.user = null;
       this.showAlert("Logged out.");
     },
@@ -471,6 +492,7 @@ createApp({
         if (data.success) {
           localStorage.setItem("token", data.token);
           this.user = data.user;
+          localStorage.setItem("cachedUser", JSON.stringify(data.user));
           this.loginForm = { identifier: "", password: "" };
           await this.$nextTick();
           this.fetchContent(1);
@@ -551,6 +573,7 @@ createApp({
         const data = await res.json();
         if (data.success) {
           this.user = data.user;
+          localStorage.setItem("cachedUser", JSON.stringify(data.user));
           this.profileForm = { username: this.user.username || "", email: this.user.email || "" };
           this.showAlert("Profile updated!");
         } else { this.showAlert(data.message || "Failed to update profile.", "danger"); }

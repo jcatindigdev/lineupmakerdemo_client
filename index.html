@@ -164,6 +164,9 @@
 
   <!-- ── Global Alert ──────────────────────────────────── -->
   <div class="container-fluid px-3 px-md-4 mt-3">
+    <div v-if="isOffline" class="offline-banner">
+      <i class="bi bi-wifi-off me-2"></i> You're offline — showing cached content. Playlists you've opened before will still work.
+    </div>
     <div v-if="alert.message"
       :class="`alert alert-${alert.type} alert-dismissible fade show`" role="alert">
       <i :class="`bi ${alert.type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle'} me-2`"></i>
@@ -1298,5 +1301,17 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 <script src="app.js"></script>
+<script>
+  // Enables offline playlists: caches the app shell and any playlist
+  // you've opened so it can be reopened (with autoscroll/swipe intact)
+  // without an internet connection. See sw.js for details.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch((err) => {
+        console.error("Service worker registration failed:", err);
+      });
+    });
+  }
+</script>
 </body>
 </html>
