@@ -1,5 +1,5 @@
 
-const SHELL_CACHE = "lineupmaker-shell-v4";
+const SHELL_CACHE = "lineupmaker-shell-v5";
 const PLAYLIST_CACHE = "lineupmaker-playlists-v1";
 
 const SHELL_URLS = [
@@ -81,7 +81,8 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          caches.open(SHELL_CACHE).then((cache) => cache.put(request, response.clone()));
+          const copy = response.clone();
+          caches.open(SHELL_CACHE).then((cache) => cache.put(request, copy));
           return response;
         })
         .catch(() => caches.match(request))
