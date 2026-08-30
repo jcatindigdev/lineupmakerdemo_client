@@ -631,6 +631,26 @@ createApp({
       return div.textContent || div.innerText || "";
     },
 
+    // Like stripHtml, but preserves line breaks — needed for exports
+    // (TXT) where a chord chart's line structure actually matters.
+    // textContent/innerText don't reliably turn <div>/<br> boundaries
+    // into real newlines (especially on a detached element), so this
+    // converts them explicitly before stripping the remaining tags.
+    // Legacy plain-text bodies (no rich-text tags) are left untouched.
+    htmlToPlainText(html) {
+      if (!html) return "";
+      if (!this.looksLikeFormattedHtml(html)) return html;
+
+      let text = html;
+      text = text.replace(/<br\s*\/?>/gi, "\n");
+      text = text.replace(/<\/div>/gi, "\n");
+      text = text.replace(/<\/p>/gi, "\n");
+      text = this.stripHtml(text);
+      text = text.replace(/^\n+/, "");
+      text = text.replace(/\n{3,}/g, "\n\n");
+      return text;
+    },
+
     formatDate(dateStr) {
       if (!dateStr) return "";
       return new Date(dateStr).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -866,6 +886,18 @@ createApp({
       const div = document.createElement("div");
       div.textContent = str || "";
       return div.innerHTML;
+    },
+
+    // For contexts (like the print preview) that render a body string
+    // directly into an HTML document: chords with real rich-text
+    // formatting render as-is (so bold/italic/highlight show up),
+    // everything else (songs, and legacy plain-text chords) gets
+    // escaped so a literal "<" or "&" can't be misread as markup.
+    safeBodyHtml(item) {
+      if (item?.contentType === "chord" && this.looksLikeFormattedHtml(item.body)) {
+        return item.body || "";
+      }
+      return this.escapeHtml(item?.body);
     },
 
     loadChordBodyIntoEditor(target, body) {
@@ -1232,7 +1264,7 @@ createApp({
           if (item.tags?.length) meta.push(`Tags: ${item.tags.join(", ")}`);
           if (meta.length) txt += meta.join("  |  ") + "\n";
         }
-        txt += DASH + "\n\n" + (item.body || "") + "\n\n";
+        txt += DASH + "\n\n" + (this.htmlToPlainText(item.body) || "") + "\n\n";
         const singers     = this.activeSingers(item);
         const instruments = this.activeInstruments(item);
         if (singers.length || instruments.length || item.scoreUrl) {
@@ -1520,7 +1552,7 @@ createApp({
                 ${item.tags?.length ? `<span>Tags: ${item.tags.join(", ")}</span>` : ""}
               </div>` : ""}
               <hr class="preview-page__divider"/>
-              <div class="preview-page__body${isChord ? " preview-page__body--chord" : ""}">${item.body}</div>
+              <div class="preview-page__body${isChord ? " preview-page__body--chord" : ""}">${this.safeBodyHtml(item)}</div>
               ${resourcesHTML}
             </div>
             <div class="preview-page__footer">${docTitle} &mdash; Section ${idx + 1} of ${this.selectedItems.length}</div>
