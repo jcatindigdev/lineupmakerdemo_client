@@ -599,7 +599,7 @@
               @mousedown.prevent="applyHighlight('transparent', 'form')"><i class="bi bi-eraser"></i></button>
           </div>
           <div ref="chordBodyEditable" class="form-control-app chord-textarea richtext-editable"
-            contenteditable="true"
+            contenteditable="true" spellcheck="false" autocorrect="off" autocapitalize="off"
             @input="onChordBodyInput($event, 'form')"
             data-placeholder="Paste chords here. Use spaces to align chords above lyrics, then select text to bold, italicize, or highlight it."></div>
           <small class="text-muted mt-1 d-block">
@@ -903,8 +903,16 @@
             <span v-else-if="savedToMyPlaylists"><i class="bi bi-check-circle-fill me-1"></i> Saved</span>
             <span v-else><i class="bi bi-bookmark-plus-fill me-1"></i> Save to My Playlists</span>
           </button>
-          <div class="player-progress">
-            {{ playerIndex + 1 }} / {{ currentPlaylist.items.length }}
+          <div class="player-nav-compact">
+            <button class="player-nav-compact__btn" :disabled="playerIndex === 0" @click="prevSong" title="Previous song">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <div class="player-progress">
+              {{ playerIndex + 1 }} / {{ currentPlaylist.items.length }}
+            </div>
+            <button class="player-nav-compact__btn" :disabled="playerIndex === currentPlaylist.items.length - 1" @click="nextSong" title="Next song">
+              <i class="bi bi-chevron-right"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -1149,7 +1157,7 @@
                     @mousedown.prevent="applyHighlight('transparent', 'editForm')"><i class="bi bi-eraser"></i></button>
                 </div>
                 <div ref="editChordBodyEditable" class="form-control chord-textarea richtext-editable"
-                  contenteditable="true"
+                  contenteditable="true" spellcheck="false" autocorrect="off" autocapitalize="off"
                   @input="onChordBodyInput($event, 'editForm')"></div>
               </template>
 

@@ -697,6 +697,38 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
   padding: 0.3rem 0.75rem;
 }
 
+.player-nav-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.player-nav-compact__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-mid);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.player-nav-compact__btn:hover:not(:disabled) {
+  background: var(--navy);
+  color: var(--gold-light);
+  border-color: var(--navy);
+}
+
+.player-nav-compact__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .player-swipe-area {
   touch-action: pan-y;
   user-select: none;

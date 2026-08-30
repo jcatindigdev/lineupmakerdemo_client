@@ -631,6 +631,24 @@ createApp({
       return div.textContent || div.innerText || "";
     },
 
+    // Browsers sometimes silently substitute "smart" typographic
+    // characters while typing in an editable field — curly quotes for
+    // straight ones, an em-dash for "--", (tm)/(c)/(r) for their symbol
+    // equivalents, "..." for an ellipsis character. They don't belong
+    // in a chord chart and can look like garbage marks in some export
+    // formats, so exports normalize them back to plain ASCII.
+    normalizeSmartPunctuation(text) {
+      if (!text) return "";
+      return text
+        .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+        .replace(/[\u201C\u201D\u201E\u201F]/g, "\"")
+        .replace(/[\u2013\u2014]/g, "-")
+        .replace(/\u2026/g, "...")
+        .replace(/\u2122/g, "(TM)")
+        .replace(/\u00A9/g, "(C)")
+        .replace(/\u00AE/g, "(R)");
+    },
+
     // Like stripHtml, but preserves line breaks — needed for exports
     // (TXT) where a chord chart's line structure actually matters.
     // textContent/innerText don't reliably turn <div>/<br> boundaries
@@ -639,7 +657,7 @@ createApp({
     // Legacy plain-text bodies (no rich-text tags) are left untouched.
     htmlToPlainText(html) {
       if (!html) return "";
-      if (!this.looksLikeFormattedHtml(html)) return html;
+      if (!this.looksLikeFormattedHtml(html)) return this.normalizeSmartPunctuation(html);
 
       let text = html;
       text = text.replace(/<br\s*\/?>/gi, "\n");
@@ -648,7 +666,7 @@ createApp({
       text = this.stripHtml(text);
       text = text.replace(/^\n+/, "");
       text = text.replace(/\n{3,}/g, "\n\n");
-      return text;
+      return this.normalizeSmartPunctuation(text);
     },
 
     formatDate(dateStr) {
