@@ -649,6 +649,19 @@ createApp({
         .replace(/\u00AE/g, "(R)");
     },
 
+    // Tab characters and zero-width spaces are common when a chord
+    // chart was originally typed or pasted from Word/Google Docs into
+    // the chord editor. They render inconsistently (or as visible box
+    // characters in some export paths), so they're normalized away
+    // regardless of typography preferences.
+    sanitizeInvisibleChars(text) {
+      if (!text) return "";
+      return text
+        .replace(/\t/g, "    ")
+        .replace(/[\u200B\u200C\u200D\uFEFF]/g, "")
+        .replace(/\uFFFD/g, "");
+    },
+
     // Like stripHtml, but preserves line breaks — needed for exports
     // (TXT) where a chord chart's line structure actually matters.
     // textContent/innerText don't reliably turn <div>/<br> boundaries
@@ -657,9 +670,10 @@ createApp({
     // Legacy plain-text bodies (no rich-text tags) are left untouched.
     htmlToPlainText(html) {
       if (!html) return "";
-      if (!this.looksLikeFormattedHtml(html)) return this.normalizeSmartPunctuation(html);
+      const cleaned = this.sanitizeInvisibleChars(html);
+      if (!this.looksLikeFormattedHtml(cleaned)) return this.normalizeSmartPunctuation(cleaned);
 
-      let text = html;
+      let text = cleaned;
       text = text.replace(/<br\s*\/?>/gi, "\n");
       text = text.replace(/<\/div>/gi, "\n");
       text = text.replace(/<\/p>/gi, "\n");
