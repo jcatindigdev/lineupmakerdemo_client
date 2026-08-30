@@ -103,7 +103,7 @@
           <li class="nav-item">
             <a class="nav-link" :class="{ active: activeTab === 'guitarchords' }"
               href="#" @click.prevent="switchTab('guitarchords')">
-              <i class="bi bi-guitar"></i> Guitar Chords
+              <i class="bi bi-music-note-beamed"></i> Guitar Chords
             </a>
           </li>
 
@@ -481,7 +481,7 @@
               </div>
             </div>
             <div v-if="activeInstruments(detailItem).length" class="detail-resources__group">
-              <div class="detail-resources__group-label"><i class="bi bi-guitar me-1"></i> Instruments</div>
+              <div class="detail-resources__group-label"><i class="bi bi-soundwave me-1"></i> Instruments</div>
               <div class="detail-resources__links">
                 <a v-for="part in activeInstruments(detailItem)" :key="part"
                   :href="detailItem.voicings[part]" target="_blank" rel="noopener"
@@ -644,26 +644,26 @@
             <input type="url" class="form-control-app" v-model="form.voicings.solo" placeholder="https://..." />
           </div>
         </div>
-        <div class="resources-section__head"><i class="bi bi-guitar"></i> Instrument Audio Links <small class="text-muted ms-1">(optional)</small></div>
+        <div class="resources-section__head"><i class="bi bi-soundwave"></i> Instrument Audio Links <small class="text-muted ms-1">(optional)</small></div>
         <div class="row g-3 mb-3">
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 1</label>
+            <label class="form-label-app"><i class="bi bi-soundwave"></i> Electric Guitar 1</label>
             <input type="url" class="form-control-app" v-model="form.voicings.electricGuitar1" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 2</label>
+            <label class="form-label-app"><i class="bi bi-soundwave"></i> Electric Guitar 2</label>
             <input type="url" class="form-control-app" v-model="form.voicings.electricGuitar2" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label-app"><i class="bi bi-guitar"></i> Electric Guitar 3</label>
+            <label class="form-label-app"><i class="bi bi-soundwave"></i> Electric Guitar 3</label>
             <input type="url" class="form-control-app" v-model="form.voicings.electricGuitar3" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label-app"><i class="bi bi-guitar"></i> Acoustic Guitar 1</label>
+            <label class="form-label-app"><i class="bi bi-soundwave"></i> Acoustic Guitar 1</label>
             <input type="url" class="form-control-app" v-model="form.voicings.acousticGuitar1" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
-            <label class="form-label-app"><i class="bi bi-guitar"></i> Acoustic Guitar 2</label>
+            <label class="form-label-app"><i class="bi bi-soundwave"></i> Acoustic Guitar 2</label>
             <input type="url" class="form-control-app" v-model="form.voicings.acousticGuitar2" placeholder="https://..." />
           </div>
           <div class="col-12 col-sm-6 col-md-4">
@@ -973,7 +973,7 @@
               </div>
             </div>
             <div v-if="activeInstruments(currentPlayerItem).length" class="detail-resources__group">
-              <div class="detail-resources__group-label"><i class="bi bi-guitar me-1"></i> Instruments</div>
+              <div class="detail-resources__group-label"><i class="bi bi-soundwave me-1"></i> Instruments</div>
               <div class="detail-resources__links">
                 <a v-for="part in activeInstruments(currentPlayerItem)" :key="part"
                   :href="currentPlayerItem.voicings[part]" target="_blank" rel="noopener"
@@ -1200,7 +1200,7 @@
                   <input type="url" class="form-control" v-model="editForm.voicings.solo" placeholder="https://..." />
                 </div>
               </div>
-              <div class="resources-section__head"><i class="bi bi-guitar"></i> Instrument Audio Links <small class="text-muted ms-1">(optional)</small></div>
+              <div class="resources-section__head"><i class="bi bi-soundwave"></i> Instrument Audio Links <small class="text-muted ms-1">(optional)</small></div>
               <div class="row g-3 mb-3">
                 <div class="col-12 col-sm-6 col-md-4">
                   <label class="form-label form-label-app">Electric Guitar 1</label>
