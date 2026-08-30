@@ -1,6 +1,6 @@
 const { createApp } = Vue;
 
-const API_BASE = "/api";
+const API_BASE = "https://lineupmakerdemo-server.onrender.com/api";
 
 const SINGER_PARTS = ["fullSong", "soprano", "alto", "tenor", "bass", "baritone", "solo"];
 const INSTRUMENT_PARTS = [
