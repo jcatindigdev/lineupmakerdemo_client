@@ -128,12 +128,12 @@ button.navbar-toggler span.navbar-toggler-icon {
 
 .brand-demo {
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: rgba(255,255,255,.08);
-  padding: 0.1rem 0.45rem;
-  border-radius: 999px;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.5rem;
+  color: rgba(232, 213, 183, 0.55);
+  align-self: flex-end;
+  margin-bottom: 0.15rem;
 }
 
 .navbar-app .nav-link {
