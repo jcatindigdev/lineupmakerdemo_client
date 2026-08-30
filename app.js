@@ -1,10 +1,7 @@
 const { createApp } = Vue;
 
-// const API_BASE = "http://localhost:5000/api";
+const API_BASE = "/api";
 
-const API_BASE = "https://lineupmakerdemo-server.onrender.com/api";
-
-// ── Voice / Instrument parts ────────────────────────────────
 const SINGER_PARTS = ["fullSong", "soprano", "alto", "tenor", "bass", "baritone", "solo"];
 const INSTRUMENT_PARTS = [
   "electricGuitar1", "electricGuitar2", "electricGuitar3",
@@ -30,8 +27,6 @@ const EMPTY_VOICINGS = () => ({
   bass2: "", drums: "", keys2: "", others: "",
 });
 
-// ── Guitar Chord Chart ──────────────────────────────────────
-// positions: [lowE, A, D, G, B, highE]  |  -1=muted  0=open  n=fret
 const ROOTS = ['A','Bb','B','C','Db','D','Eb','E','F','Gb','G','Ab'];
 
 const CHORD_DB = {
@@ -181,7 +176,6 @@ const CHORD_DB = {
   ],
 };
 
-// ── SVG Chord Diagram Renderer ──────────────────────────────
 function buildChordSVG(chord) {
   const SS = 11, FS = 13, FRETS = 4, STR = 6;
   const OX = 14, OY = 26;
@@ -193,31 +187,26 @@ function buildChordSVG(chord) {
 
   let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
 
-  // Nut or fret position label
   if (chord.base === 1) {
     svg += `<rect x="${OX}" y="${OY}" width="${(STR-1)*SS}" height="3" rx="1" fill="#222"/>`;
   } else {
     svg += `<text x="${OX+(STR-1)*SS+4}" y="${OY+FS}" font-size="8" fill="#777" font-family="sans-serif">${chord.base}fr</text>`;
   }
 
-  // Fret lines
   for (let f = 0; f <= FRETS; f++) {
     svg += `<line x1="${OX}" y1="${OY+f*FS}" x2="${OX+(STR-1)*SS}" y2="${OY+f*FS}" stroke="#ccc" stroke-width="0.7"/>`;
   }
 
-  // String lines
   for (let s = 0; s < STR; s++) {
     svg += `<line x1="${sx(s)}" y1="${OY}" x2="${sx(s)}" y2="${OY+FRETS*FS}" stroke="#888" stroke-width="0.8"/>`;
   }
 
-  // Barres
   (chord.barres || []).forEach(b => {
     const rf = rel(b.fret);
     if (rf < 1 || rf > FRETS) return;
     svg += `<rect x="${sx(b.from)-4}" y="${fy(rf)-4.5}" width="${sx(b.to)-sx(b.from)+8}" height="9" rx="4.5" fill="#1a1a2e"/>`;
   });
 
-  // Dots and mute/open indicators
   chord.pos.forEach((absF, s) => {
     const x = sx(s);
     if (absF === -1) {
@@ -240,14 +229,12 @@ function buildChordSVG(chord) {
   return svg;
 }
 
-//python3 -m http.server 3000
 createApp({
   data() {
     return {
       activeTab: "library",
       alert: { message: "", type: "success" },
 
-      // ── Song Library ──────────────────────────────────────
       contentItems: [],
       loading: false,
       searchQuery: "",
@@ -256,7 +243,6 @@ createApp({
       totalPages: 1,
       searchDebounce: null,
 
-      // ── Chord Library ─────────────────────────────────────
       chordItems: [],
       chordLoading: false,
       chordSearchQuery: "",
@@ -265,19 +251,15 @@ createApp({
       chordTotalPages: 1,
       chordSearchDebounce: null,
 
-      // ── Detail Page ───────────────────────────────────────
       detailItem: null,
       detailFromTab: "library",
 
-      // ── Guitar Chord Chart ────────────────────────────────
       selectedRoot: "A",
 
-      // ── Builder (shared) ──────────────────────────────────
       selectedItems: [],
       dragIndex: null,
       dragTargetIndex: null,
 
-      // ── Upload form ───────────────────────────────────────
       form: {
         title: "",
         body: "",
@@ -288,38 +270,33 @@ createApp({
         contentType: "song",
         voicings: EMPTY_VOICINGS(),
         scoreUrl: "",
-        attachmentFile: null,   // File object staged for upload (not yet sent)
-        attachmentUrl: "",      // URL once uploaded (or already-saved value)
+        attachmentFile: null,   
+        attachmentUrl: "",      
         attachmentName: "",
-        attachmentType: "",     // "image" | "pdf" | ""
+        attachmentType: "",     
       },
       uploading: false,
       uploadingAttachment: false,
       convertingAttachment: false,
 
-      // ── Export / Builder settings ─────────────────────────
       pdfSettings: { title: "", author: "", includeMetadata: true },
       exportFormat: "pdf",
       generating: false,
       previewData: [],
 
-      // ── Auth ──────────────────────────────────────────────
       user: null,
       loggingIn: false,
       showGatePassword: false,
       showCreatePassword: false,
 
-      // ── Autoscroll ────────────────────────────────────────
       autoscroll: { active: false, speed: 1, rafId: null },
 
-      // ── Playlists ─────────────────────────────────────────
       playlists: [],
       playlistsLoading: false,
       newPlaylistTitle: "",
       savingPlaylist: false,
       shareLinkUrl: "",
 
-      // ── Playlist Player ───────────────────────────────────
       currentPlaylist: null,
       playerIndex: 0,
       playerLoading: false,
@@ -330,7 +307,6 @@ createApp({
       swipeStartX: 0,
       swipeStartY: 0,
 
-      // ── Rich text (chord editor) ──────────────────────────
       highlightColors: [
         { name: "Yellow",      value: "#fff59d" },
         { name: "Light Blue",  value: "#a7d8f0" },
@@ -339,13 +315,11 @@ createApp({
         { name: "Light Green", value: "#b9e6b0" },
       ],
 
-      // ── Tab history (back button support) ─────────────────
       tabHistory: [],
       loginForm: { identifier: "", password: "" },
       registerForm: { username: "", email: "", password: "", isAdmin: false },
       adminCreateForm: { username: "", email: "", password: "", isAdmin: false },
 
-      // ── Profile ─────────────────────────────────────────────
       profileForm: { username: "", email: "" },
       savingProfile: false,
       passwordForm: { currentPassword: "", newPassword: "", confirmNewPassword: "" },
@@ -353,7 +327,6 @@ createApp({
       showCurrentPassword: false,
       showNewPassword: false,
 
-      // ── Edit modal ────────────────────────────────────────
       editForm: {
         _id: "", title: "", body: "", author: "", category: "", tags: "",
         contentType: "song",
@@ -372,15 +345,10 @@ createApp({
     isAdminUser() {
       return this.user && this.user.isAdmin === true;
     },
-    // The song/chord currently shown in the playlist player
     currentPlayerItem() {
       if (!this.currentPlaylist || !this.currentPlaylist.items || !this.currentPlaylist.items.length) return null;
       return this.currentPlaylist.items[this.playerIndex] || null;
     },
-    // Safe-to-render HTML for chord bodies (detail view + player view).
-    // Legacy chord sheets saved before rich-text existed are plain
-    // text and may contain a literal "<" or "&" — only treat a body
-    // as real markup if it contains tags the editor itself produces.
     detailBodyHtml() {
       if (!this.detailItem) return "";
       const body = this.detailItem.body;
@@ -391,13 +359,10 @@ createApp({
       const body = this.currentPlayerItem.body;
       return this.looksLikeFormattedHtml(body) ? (body || "") : this.escapeHtml(body);
     },
-    // Whether the logged-in user already owns the playlist currently
-    // open in the player — controls the "Save to My Playlists" button.
     isPlaylistOwner() {
       if (!this.currentPlaylist || !this.user) return false;
       return String(this.currentPlaylist.owner) === String(this.user.id);
     },
-    // Pre-rendered chord diagrams for the selected root
     activeChordDiagrams() {
       return (CHORD_DB[this.selectedRoot] || []).map(chord => ({
         ...chord,
@@ -415,8 +380,6 @@ createApp({
   },
 
   mounted() {
-    // Capture a shared playlist link (?playlist=shareId) BEFORE the
-    // history.replaceState below strips the query string from the URL bar.
     const sharedId = new URLSearchParams(window.location.search).get("playlist");
     if (sharedId) this.pendingShareId = sharedId;
 
@@ -431,9 +394,7 @@ createApp({
       }
     });
 
-    // Replace the initial history state
     history.replaceState({ tab: "library" }, "", window.location.pathname);
-    // Intercept browser back button
     window.addEventListener("popstate", (e) => {
       const prev = this.tabHistory.pop();
       this.closeAnyOpenModal();
@@ -442,7 +403,6 @@ createApp({
         this.activeTab = prev;
         history.pushState({ tab: prev }, "", window.location.pathname);
       } else {
-        // Nothing in our history — push state back so we stay on the page
         history.pushState({ tab: this.activeTab }, "", window.location.pathname);
       }
     });
@@ -450,7 +410,6 @@ createApp({
 
   methods: {
 
-    // ── Auth ────────────────────────────────────────────────
     getToken() { return localStorage.getItem("token"); },
 
     async checkAuth() {
@@ -474,14 +433,9 @@ createApp({
         }
       } catch (err) {
         console.error("Auth check failed:", err);
-        // Most likely offline rather than actually logged out — fall back
-        // to the last verified session instead of forcing a login screen
-        // we have no way to complete without a network connection. This
-        // is what lets a previously-opened playlist still work (autoscroll
-        // included) after a full page reload with no internet.
         const cached = localStorage.getItem("cachedUser");
         if (cached) {
-          try { this.user = JSON.parse(cached); } catch { /* ignore malformed cache */ }
+          try { this.user = JSON.parse(cached); } catch {  }
         }
       }
     },
@@ -559,7 +513,6 @@ createApp({
       } catch (error) { console.error(error); this.showAlert("Failed to create user.", "danger"); }
     },
 
-    // ── Profile ────────────────────────────────────────────
     openProfile() {
       this.profileForm = {
         username: this.user.username || "",
@@ -624,10 +577,6 @@ createApp({
       finally { this.changingPassword = false; }
     },
 
-    // ── Navigation ──────────────────────────────────────────
-    // Force-closes any Bootstrap modal still marked "open" and strips
-    // any leftover body scroll-lock styles Bootstrap's own async cleanup
-    // may not have gotten to yet. See switchTab() for why this matters.
     closeAnyOpenModal() {
       document.querySelectorAll(".modal.show").forEach((modalEl) => {
         const inst = bootstrap.Modal.getInstance(modalEl);
@@ -640,12 +589,6 @@ createApp({
     },
 
     switchTab(tab) {
-      // Bootstrap can leave `overflow: hidden` stuck on <body> if a modal
-      // gets left "open" when the user navigates away some other way (e.g.
-      // the browser back button) instead of using the modal's own close
-      // button. That silently breaks window scrolling — including
-      // autoscroll — app-wide until the page reloads, so always clean up
-      // first, every time we change views.
       this.closeAnyOpenModal();
       if (this.activeTab && this.activeTab !== tab) {
         this.tabHistory.push(this.activeTab);
@@ -653,7 +596,6 @@ createApp({
       }
       this.stopAutoscroll();
       this.activeTab = tab;
-      // Push a dummy history state so the browser back button triggers popstate
       history.pushState({ tab }, "", window.location.pathname);
       const navbar = document.getElementById("navbarNav");
       if (navbar && navbar.classList.contains("show")) {
@@ -662,7 +604,6 @@ createApp({
       }
     },
 
-    // ── Detail Page ──────────────────────────────────────────
     openDetail(item, fromTab = "library") {
       this.detailItem   = { ...item };
       this.detailFromTab = fromTab;
@@ -673,7 +614,6 @@ createApp({
       this.switchTab(this.detailFromTab);
     },
 
-    // ── Helpers ─────────────────────────────────────────────
     showAlert(message, type = "success") {
       this.alert = { message, type };
       setTimeout(() => (this.alert.message = ""), 4000);
@@ -684,9 +624,6 @@ createApp({
       return text.length > len ? text.slice(0, len) + "…" : text;
     },
 
-    // Strips HTML tags for plain-text previews (chord bodies may now
-    // contain <b>/<i>/<span style="background:..."> formatting from
-    // the rich-text editor — card previews should show clean text).
     stripHtml(html) {
       if (!html) return "";
       const div = document.createElement("div");
@@ -699,7 +636,6 @@ createApp({
       return new Date(dateStr).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
     },
 
-    // ── Resource helpers ─────────────────────────────────────
     activeSingers(item) {
       if (!item?.voicings) return [];
       return SINGER_PARTS.filter(p => item.voicings[p]);
@@ -716,9 +652,6 @@ createApp({
     },
 
     hasResources(item) {
-      // Image attachments are now shown as the main content (replacing
-      // the text body), not listed as a resource link — only legacy PDF
-      // attachments still need a "Resources" entry.
       const hasPdfAttachment = !!(item?.attachmentUrl) && item?.attachmentType === "pdf";
       return this.activeVoicings(item).length > 0 || !!(item?.scoreUrl) || hasPdfAttachment;
     },
@@ -727,7 +660,6 @@ createApp({
       return VOICE_LABELS[part] || part;
     },
 
-    // ── Song Library ─────────────────────────────────────────
     async fetchContent(page = 1) {
       this.loading = true;
       try {
@@ -761,7 +693,6 @@ createApp({
       this.fetchContent(p);
     },
 
-    // ── Chord Library ─────────────────────────────────────────
     async fetchChords(page = 1) {
       this.chordLoading = true;
       try {
@@ -795,7 +726,6 @@ createApp({
       this.fetchChords(p);
     },
 
-    // ── Selection (shared builder) ───────────────────────────
     isSelected(id) { return this.selectedItems.some(i => i._id === id); },
 
     toggleSelect(item) {
@@ -806,7 +736,6 @@ createApp({
 
     clearSelection() { this.selectedItems = []; },
 
-    // ── Delete ───────────────────────────────────────────────
     async deleteItem(id) {
       if (!confirm("Delete this item? This cannot be undone.")) return;
       try {
@@ -817,7 +746,6 @@ createApp({
         const data = await res.json();
         if (data.success) {
           this.showAlert("Item deleted.");
-          // If detail page is showing this item, go back
           if (this.activeTab === "detail" && this.detailItem?._id === id) {
             this.switchTab(this.detailFromTab);
             this.detailItem = null;
@@ -829,7 +757,6 @@ createApp({
       } catch { this.showAlert("Delete failed.", "danger"); }
     },
 
-    // ── Edit modal ───────────────────────────────────────────
     openEditModal(item) {
       this.editForm = {
         _id:         item._id,
@@ -868,7 +795,6 @@ createApp({
       };
       const modalEl = document.getElementById("editModal");
       if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
-      // The rich-text editor is uncontrolled — load its starting content by hand.
       this.$nextTick(() => {
         if (this.$refs.editChordBodyEditable) this.loadChordBodyIntoEditor("editForm", item.body);
       });
@@ -916,7 +842,6 @@ createApp({
           this.showAlert("Details updated successfully!");
           const modalEl = document.getElementById("editModal");
           if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-          // Update detailItem if we're viewing this item
           if (this.detailItem && this.detailItem._id === this.editForm._id) {
             this.detailItem = { ...this.detailItem, ...data.data };
           }
@@ -929,22 +854,10 @@ createApp({
       } finally { this.updating = false; }
     },
 
-    // ── Rich text (chord editor: bold / italic / highlight) ───
-    // The chord body editor is a contenteditable div rather than a
-    // <textarea>, so formatting can be applied to a text selection.
-    // It's deliberately uncontrolled (not bound with v-html on every
-    // keystroke) to avoid the cursor jumping around as Vue re-renders;
-    // instead its innerHTML is read on input and written explicitly
-    // whenever content needs to be loaded in (reset, edit, undo, etc).
     chordEditorRef(target) {
       return this.$refs[target === "editForm" ? "editChordBodyEditable" : "chordBodyEditable"];
     },
 
-    // Legacy chord sheets saved before this feature existed are plain
-    // text and may contain a literal "<" or "&" (e.g. "A<5>", "R&B").
-    // Only treat a body as already-formatted HTML if it actually
-    // contains tags this editor itself produces — otherwise escape it
-    // so those characters render as literal text instead of markup.
     looksLikeFormattedHtml(str) {
       return /<\/?(b|i|span)\b/i.test(str || "");
     },
@@ -973,9 +886,6 @@ createApp({
       else this.form.body = el.innerHTML;
     },
 
-    // Buttons call this via @mousedown.prevent so the text selection
-    // inside the editor is never lost (a normal click would blur the
-    // editable div first and collapse the selection).
     applyFormat(command, target) {
       const el = this.chordEditorRef(target);
       if (!el) return;
@@ -994,10 +904,9 @@ createApp({
       this.syncChordBody(target);
     },
 
-    // ── Chord sheet attachment (photo / PDF) ──────────────────
     async onAttachmentSelected(e, target = "form") {
       const file = e.target.files && e.target.files[0];
-      e.target.value = ""; // allow re-selecting the same file later
+      e.target.value = ""; 
       if (!file) return;
 
       const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
@@ -1023,8 +932,6 @@ createApp({
           this.showAlert("PDF converted to an image so it works with Auto Scroll.");
         } catch (err) {
           console.error("PDF conversion failed:", err);
-          // Fall back to the original PDF so the upload isn't blocked
-          // entirely — it just won't have the Auto Scroll treatment.
           formObj.attachmentFile = file;
           formObj.attachmentName = file.name;
           formObj.attachmentType = "pdf";
@@ -1036,25 +943,19 @@ createApp({
         return;
       }
 
-      // Stage the file locally; it's only uploaded when the form is saved.
       formObj.attachmentFile = file;
       formObj.attachmentName = file.name;
       formObj.attachmentType = "image";
-      formObj.attachmentUrl = ""; // cleared until actually uploaded
+      formObj.attachmentUrl = ""; 
     },
 
-    // Renders every page of a PDF to a canvas via PDF.js and stitches
-    // them into one tall PNG, so a scanned chord sheet displays (and
-    // scrolls with Auto Scroll) exactly like a regular chord chart
-    // instead of sitting in an embedded PDF viewer with its own,
-    // separate internal scrolling.
     async convertPdfFileToImage(file) {
       if (!window.pdfjsLib) throw new Error("PDF renderer not available.");
 
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-      const scale = 2; // render at 2x so chord text stays sharp
+      const scale = 2; 
       const pageCanvases = [];
       let totalHeight = 0;
       let maxWidth = 0;
@@ -1071,7 +972,6 @@ createApp({
         maxWidth = Math.max(maxWidth, canvas.width);
       }
 
-      // Stack every page into a single tall image, in order.
       const stitched = document.createElement("canvas");
       stitched.width = maxWidth;
       stitched.height = totalHeight;
@@ -1100,7 +1000,6 @@ createApp({
       formObj.attachmentType = "";
     },
 
-    // Uploads the staged file (if any) and returns { attachmentUrl, attachmentName, attachmentType }
     async uploadStagedAttachment(target = "form") {
       const formObj = this[target];
       if (!formObj.attachmentFile) {
@@ -1131,7 +1030,6 @@ createApp({
       }
     },
 
-    // ── Upload ───────────────────────────────────────────────
     async uploadContent() {
       const bodyIsEmpty = !this.stripHtml(this.form.body).trim();
       if (!this.form.title.trim() || bodyIsEmpty || !this.form.category || !this.form.fileType) {
@@ -1195,8 +1093,6 @@ createApp({
         attachmentName: "",
         attachmentType: "",
       };
-      // The rich-text editor is an uncontrolled contenteditable (not
-      // reactively bound), so it needs to be cleared out by hand too.
       if (this.$refs.chordBodyEditable) this.$refs.chordBodyEditable.innerHTML = "";
     },
 
@@ -1210,7 +1106,6 @@ createApp({
       }
     },
 
-    // ── Builder drag/sort ────────────────────────────────────
     moveItem(from, to) {
       const arr = [...this.selectedItems];
       const [item] = arr.splice(from, 1);
@@ -1242,14 +1137,12 @@ createApp({
       this.previewData = [];
     },
 
-    // ── Export dispatcher ────────────────────────────────────
     generateFile() {
       if (this.exportFormat === "pdf")  this.generatePDF();
       else if (this.exportFormat === "docx") this.generateDOCX();
       else if (this.exportFormat === "txt")  this.generateTXT();
     },
 
-    // ── PDF ──────────────────────────────────────────────────
     async generatePDF() {
       if (!this.user) { this.showAlert("Authentication required.", "danger"); return; }
       if (!this.selectedItems.length) { this.showAlert("Add at least one item.", "danger"); return; }
@@ -1279,7 +1172,6 @@ createApp({
       finally { this.generating = false; }
     },
 
-    // ── DOCX ─────────────────────────────────────────────────
     async generateDOCX() {
       if (!this.user) { this.showAlert("Authentication required.", "danger"); return; }
       if (!this.selectedItems.length) { this.showAlert("Add at least one item.", "danger"); return; }
@@ -1309,7 +1201,6 @@ createApp({
       finally { this.generating = false; }
     },
 
-    // ── TXT ──────────────────────────────────────────────────
     generateTXT() {
       if (!this.user) { this.showAlert("Authentication required.", "danger"); return; }
       if (!this.selectedItems.length) { this.showAlert("Add at least one item.", "danger"); return; }
@@ -1370,15 +1261,9 @@ createApp({
       this.showAlert("TXT downloaded successfully!");
     },
 
-    // ── Autoscroll ───────────────────────────────────────────
     startAutoscroll() {
       if (this.autoscroll.active) return;
       this.autoscroll.active = true;
-      // Accumulate fractional pixels across frames rather than asking
-      // scrollBy for less than 1px at a time — many browsers silently
-      // discard sub-pixel scroll amounts instead of accumulating them,
-      // which is why low speeds (e.g. 0.7 and below → 0.35px/frame)
-      // previously did nothing at all.
       let pixelRemainder = 0;
       const scroll = () => {
         if (!this.autoscroll.active) return;
@@ -1407,8 +1292,6 @@ createApp({
       else this.startAutoscroll();
     },
 
-    // Rounds slider input to 1 decimal (0.3–3.0 in 0.1 steps) so the
-    // displayed speed never shows floating-point noise like 1.7000000000000002.
     setAutoscrollSpeed(rawValue) {
       this.autoscroll.speed = Math.round(parseFloat(rawValue) * 10) / 10;
     },
@@ -1417,7 +1300,6 @@ createApp({
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
 
-    // ── Playlists ──────────────────────────────────────────────
     async fetchPlaylists() {
       this.playlistsLoading = true;
       try {
@@ -1492,9 +1374,6 @@ createApp({
       } catch { this.showAlert("Failed to connect to the server.", "danger"); }
     },
 
-    // ── Playlist Player ──────────────────────────────────────────
-    // Fetches a playlist by its share link (requires a logged-in user —
-    // enforced server-side by the `auth` middleware on this route).
     async loadPlaylistByShareId(shareId) {
       this.playerLoading = true;
       try {
@@ -1516,7 +1395,6 @@ createApp({
     },
 
     openPlaylist(playlist) {
-      // Opening from "My Playlists" — we already have the full data.
       this.currentPlaylist = playlist;
       this.playerIndex = 0;
       this.savedToMyPlaylists = false;
@@ -1524,10 +1402,6 @@ createApp({
       this.switchTab("player");
     },
 
-    // Makes an independent copy of the playlist currently open in the
-    // player, owned by the logged-in user, so it shows up in their own
-    // "My Playlists" from now on. A snapshot, not a live link — later
-    // edits to the original won't carry over to this copy.
     async saveToMyPlaylists() {
       if (!this.currentPlaylist) return;
       this.savingToMyPlaylists = true;
@@ -1554,9 +1428,6 @@ createApp({
       this.fetchPlaylists();
     },
 
-    // Autoscroll is per-song: moving to a new song always stops any
-    // active scroll and resets to the top, so it never carries over
-    // onto the next chord chart unexpectedly.
     nextSong() {
       if (!this.currentPlaylist || this.playerIndex >= this.currentPlaylist.items.length - 1) return;
       this.stopAutoscroll();
@@ -1571,7 +1442,6 @@ createApp({
       this.scrollToTop();
     },
 
-    // ── Swipe navigation (playlist player, chords & lyrics alike) ──
     onPlayerTouchStart(e) {
       const t = e.changedTouches[0];
       this.swipeStartX = t.clientX;
@@ -1583,13 +1453,11 @@ createApp({
       const dx = t.clientX - this.swipeStartX;
       const dy = t.clientY - this.swipeStartY;
       const SWIPE_THRESHOLD = 60;
-      // Ignore small or mostly-vertical drags so normal page scrolling isn't hijacked.
       if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
-      if (dx < 0) this.prevSong();  // swiped left  → previous song
-      else this.nextSong();         // swiped right → next song
+      if (dx < 0) this.prevSong();  
+      else this.nextSong();         
     },
 
-    // ── Print Preview ─────────────────────────────────────────
     async previewPDF() {
       if (!this.selectedItems.length) return;
 

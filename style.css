@@ -1,6 +1,4 @@
-/* ════════════════════════════════════════════════════════
-   DESIGN TOKENS
-════════════════════════════════════════════════════════ */
+
 :root {
   --navy:        #1a1a2e;
   --navy-light:  #16213e;
@@ -38,9 +36,6 @@ h1,h2,h3,h4,h5,h6 {
 
 #app { min-height: 100vh; }
 
-/* ════════════════════════════════════════════════════════
-   AUTH GATE
-════════════════════════════════════════════════════════ */
 .auth-gate {
   min-height: 100vh;
   display: flex;
@@ -96,9 +91,6 @@ h1,h2,h3,h4,h5,h6 {
   margin-bottom: 0;
 }
 
-/* ════════════════════════════════════════════════════════
-   NAVBAR
-════════════════════════════════════════════════════════ */
 .navbar-app {
   background: var(--navy);
   padding: 0.65rem 0;
@@ -164,7 +156,6 @@ button.navbar-toggler span.navbar-toggler-icon {
   background: rgba(255,255,255,.07);
 }
 
-/* Mobile: stack nav links full-width */
 @media (max-width: 991.98px) {
   .navbar-app .nav-link {
     padding: 0.6rem 0.75rem;
@@ -174,7 +165,6 @@ button.navbar-toggler span.navbar-toggler-icon {
   .navbar-app .navbar-nav { gap: 0.1rem !important; }
 }
 
-/* ── Badge count on Builder nav link ── */
 .badge-count {
   position: absolute;
   top: 2px;
@@ -192,7 +182,6 @@ button.navbar-toggler span.navbar-toggler-icon {
   padding: 0 3px;
 }
 
-/* ── Mobile builder shortcut pill ── */
 .btn-gold-pill {
   background: var(--gold);
   color: var(--navy);
@@ -209,7 +198,6 @@ button.navbar-toggler span.navbar-toggler-icon {
 
 .btn-gold-pill:hover { background: var(--gold-light); color: var(--navy); }
 
-/* ── User pill ── */
 .nav-user-pill {
   display: flex;
   align-items: center;
@@ -271,9 +259,6 @@ button.navbar-toggler span.navbar-toggler-icon {
   .nav-user-pill__name { flex: 1; max-width: none; }
 }
 
-/* ════════════════════════════════════════════════════════
-   SECTION HEADERS
-════════════════════════════════════════════════════════ */
 .section-header {
   display: flex;
   align-items: flex-start;
@@ -286,9 +271,6 @@ button.navbar-toggler span.navbar-toggler-icon {
 .section-title { font-size: 1.6rem; color: var(--navy); margin: 0; }
 .section-sub   { color: var(--text-muted); font-size: 0.875rem; margin: 0.1rem 0 0; }
 
-/* ════════════════════════════════════════════════════════
-   BUTTONS
-════════════════════════════════════════════════════════ */
 .btn-primary-app {
   background: var(--navy);
   color: var(--gold-light);
@@ -313,9 +295,6 @@ button.navbar-toggler span.navbar-toggler-icon {
 
 .btn-primary-app:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* ════════════════════════════════════════════════════════
-   SEARCH BAR
-════════════════════════════════════════════════════════ */
 .search-bar-wrap { margin-bottom: 1.25rem; }
 
 .search-group {
@@ -408,9 +387,6 @@ button.navbar-toggler span.navbar-toggler-icon {
   .search-row-cat { border-top: none; border-left: 1px solid var(--border); width: 200px; flex-shrink: 0; }
 }
 
-/* ════════════════════════════════════════════════════════
-   CONTENT CARDS
-════════════════════════════════════════════════════════ */
 .content-card {
   background: var(--card-bg);
   border: 1.5px solid var(--border);
@@ -523,12 +499,10 @@ button.navbar-toggler span.navbar-toggler-icon {
 
 .content-card:hover .content-card__actions { opacity: 1; }
 
-/* Always show on touch devices */
 @media (hover: none) {
   .content-card__actions { opacity: 1; position: static; margin-top: 0.4rem; }
 }
 
-/* ── Tag pills ── */
 .tag-pill {
   background: var(--navy);
   color: var(--gold-light);
@@ -538,7 +512,6 @@ button.navbar-toggler span.navbar-toggler-icon {
   border-radius: 999px;
 }
 
-/* ── Chord card variant ── */
 .content-card--chord { border-color: #d8c9a8; }
 .content-card--chord:hover { border-color: var(--gold); }
 .content-card--chord.content-card--selected {
@@ -568,9 +541,6 @@ button.navbar-toggler span.navbar-toggler-icon {
   line-height: 1.45;
 }
 
-/* ════════════════════════════════════════════════════════
-   LOADING / EMPTY
-════════════════════════════════════════════════════════ */
 .loading-wrap {
   display: flex;
   align-items: center;
@@ -589,9 +559,6 @@ button.navbar-toggler span.navbar-toggler-icon {
 .empty-state p { margin: 0; font-size: 1rem; }
 .empty-state a { color: var(--navy); font-weight: 600; }
 
-/* ════════════════════════════════════════════════════════
-   PAGINATION
-════════════════════════════════════════════════════════ */
 .pagination-app .page-link {
   color: var(--navy);
   border-color: var(--border);
@@ -606,9 +573,6 @@ button.navbar-toggler span.navbar-toggler-icon {
   color: var(--gold-light);
 }
 
-/* ════════════════════════════════════════════════════════
-   FLOATING SELECTION BAR
-════════════════════════════════════════════════════════ */
 .floating-bar {
   position: fixed;
   bottom: 1.25rem;
@@ -631,9 +595,6 @@ button.navbar-toggler span.navbar-toggler-icon {
 .floating-bar__count { display: flex; align-items: center; gap: 0.3rem; }
 .floating-bar__actions { display: flex; align-items: center; gap: 0.4rem; }
 
-/* ════════════════════════════════════════════════════════
-   FORMS (upload / builder)
-════════════════════════════════════════════════════════ */
 .upload-card {
   background: var(--card-bg);
   border: 1.5px solid var(--border);
@@ -713,10 +674,6 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
   display: block;
 }
 
-/* Chord sheet image shown as the main content (replacing the text
-   body) in the detail view and playlist player. No max-height here —
-   unlike the small resource preview above, this is the whole chart,
-   and Auto Scroll needs the full image in the page's scroll height. */
 .detail-attachment-wrap {
   display: flex;
   justify-content: center;
@@ -730,9 +687,6 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
   display: block;
 }
 
-/* ════════════════════════════════════════════════════════
-   PLAYLIST PLAYER
-════════════════════════════════════════════════════════ */
 .player-progress {
   font-size: 0.85rem;
   font-weight: 700;
@@ -762,9 +716,6 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
   color: var(--text-mid);
 }
 
-/* ════════════════════════════════════════════════════════
-   BUILDER PANEL
-════════════════════════════════════════════════════════ */
 .builder-panel {
   background: var(--card-bg);
   border: 1.5px solid var(--border);
@@ -890,9 +841,6 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
   vertical-align: middle;
 }
 
-/* ════════════════════════════════════════════════════════
-   DETAIL PAGE
-════════════════════════════════════════════════════════ */
 .detail-topbar {
   display: flex;
   align-items: center;
@@ -987,9 +935,6 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
 .detail-resource-link--audio { background: var(--navy); color: var(--gold-light); }
 .detail-resource-link--score { background: var(--gold); color: var(--navy); }
 
-/* ════════════════════════════════════════════════════════
-   GUITAR CHORD CHART
-════════════════════════════════════════════════════════ */
 .chord-root-selector { display: flex; flex-wrap: wrap; gap: 0.45rem; }
 
 .chord-root-btn {
@@ -1046,9 +991,6 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
 
 .chord-diagram-card__svg { display: flex; align-items: center; justify-content: center; }
 
-/* ════════════════════════════════════════════════════════
-   CHORD TEXTAREA
-════════════════════════════════════════════════════════ */
 .chord-textarea {
   font-family: 'Courier New', Courier, monospace !important;
   font-size: 0.85rem !important;
@@ -1060,9 +1002,6 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
 
 .chord-textarea:focus { background: #ffffff !important; }
 
-/* ════════════════════════════════════════════════════════
-   RICH TEXT EDITOR (chord bodies: bold / italic / highlight)
-════════════════════════════════════════════════════════ */
 .richtext-toolbar {
   display: flex;
   align-items: center;
@@ -1150,9 +1089,6 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
   white-space: pre-wrap;
 }
 
-/* ════════════════════════════════════════════════════════
-   MODALS
-════════════════════════════════════════════════════════ */
 .modal-content { border-radius: var(--radius); border: none; box-shadow: var(--shadow-lg); }
 
 .modal-header {
@@ -1177,26 +1113,14 @@ textarea.form-control-app { resize: vertical; min-height: 180px; }
 
 .alert { border-radius: var(--radius-sm); font-size: 0.875rem; }
 
-/* ════════════════════════════════════════════════════════
-   FOOTER
-════════════════════════════════════════════════════════ */
 footer .mb-1 { font-size: 0.7rem; }
 footer .small { font-size: 0.6rem; }
 
-/* ════════════════════════════════════════════════════════
-   PRINT
-════════════════════════════════════════════════════════ */
 .preview-item, p, div { page-break-inside: auto !important; break-inside: auto !important; }
 .force-next-page { page-break-before: always !important; break-before: page !important; }
 
-/* ════════════════════════════════════════════════════════
-   MISC UTILITIES
-════════════════════════════════════════════════════════ */
 .custom-lock-cursor:disabled { cursor: not-allowed !important; pointer-events: auto !important; }
 
-/* ════════════════════════════════════════════════════════
-   PASSWORD TOGGLE WRAPPER
-════════════════════════════════════════════════════════ */
 .pw-wrap {
   position: relative;
   display: flex;
@@ -1229,9 +1153,6 @@ footer .small { font-size: 0.6rem; }
 
 .pw-toggle:hover { color: var(--navy); }
 
-/* ════════════════════════════════════════════════════════
-   AUTOSCROLL BAR (detail / chord page)
-════════════════════════════════════════════════════════ */
 .autoscroll-bar {
   display: flex;
   align-items: center;
@@ -1326,8 +1247,6 @@ footer .small { font-size: 0.6rem; }
   .autoscroll-bar__range { max-width: 100px; }
 }
 
-/* Sticky/floating variant — stays reachable while the page is
-   auto-scrolling through a long chord chart. */
 .autoscroll-bar--floating {
   position: fixed;
   bottom: 1.25rem;
@@ -1340,8 +1259,6 @@ footer .small { font-size: 0.6rem; }
   margin-bottom: 0;
 }
 
-/* Reserves the space the floating bar would otherwise cover, so it
-   never overlaps the last lines of the chord chart underneath it. */
 .autoscroll-bar__spacer {
   height: 76px;
 }
